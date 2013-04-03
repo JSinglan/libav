@@ -586,53 +586,53 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
     int16_t *tmp = tmp_array;
 
     src -= epel_extra_before * srcstride;
-        if (width <= 32) {
-            for (y = 0; y < height + epel_extra; y++, src += srcstride, tmp += tmpstride) {
-                tmp[0] = EPEL_FILTER(src, 1, filter_h, 0) >> (BIT_DEPTH - 8);
-                tmp[1] = EPEL_FILTER(src, 1, filter_h, 1) >> (BIT_DEPTH - 8);
-                if (width == 2) continue;
-                tmp[2] = EPEL_FILTER(src, 1, filter_h, 2) >> (BIT_DEPTH - 8);
-                tmp[3] = EPEL_FILTER(src, 1, filter_h, 3) >> (BIT_DEPTH - 8);
-                if (width == 4) continue;
-                tmp[4] = EPEL_FILTER(src, 1, filter_h, 4) >> (BIT_DEPTH - 8);
-                tmp[5] = EPEL_FILTER(src, 1, filter_h, 5) >> (BIT_DEPTH - 8);
-                tmp[6] = EPEL_FILTER(src, 1, filter_h, 6) >> (BIT_DEPTH - 8);
-                tmp[7] = EPEL_FILTER(src, 1, filter_h, 7) >> (BIT_DEPTH - 8);
-                if (width <= 8) continue;
-                tmp[8] = EPEL_FILTER(src, 1, filter_h, 8) >> (BIT_DEPTH - 8);
-                tmp[9] = EPEL_FILTER(src, 1, filter_h, 9) >> (BIT_DEPTH - 8);
-                tmp[10] = EPEL_FILTER(src, 1, filter_h, 10) >> (BIT_DEPTH - 8);
-                tmp[11] = EPEL_FILTER(src, 1, filter_h, 11) >> (BIT_DEPTH - 8);
-                tmp[12] = EPEL_FILTER(src, 1, filter_h, 12) >> (BIT_DEPTH - 8);
-                tmp[13] = EPEL_FILTER(src, 1, filter_h, 13) >> (BIT_DEPTH - 8);
-                tmp[14] = EPEL_FILTER(src, 1, filter_h, 14) >> (BIT_DEPTH - 8);
-                tmp[15] = EPEL_FILTER(src, 1, filter_h, 15) >> (BIT_DEPTH - 8);
-                if (width <= 16) continue;
-                tmp[16] = EPEL_FILTER(src, 1, filter_h, 16) >> (BIT_DEPTH - 8);
-                tmp[17] = EPEL_FILTER(src, 1, filter_h, 17) >> (BIT_DEPTH - 8);
-                tmp[18] = EPEL_FILTER(src, 1, filter_h, 18) >> (BIT_DEPTH - 8);
-                tmp[19] = EPEL_FILTER(src, 1, filter_h, 19) >> (BIT_DEPTH - 8);
-                tmp[20] = EPEL_FILTER(src, 1, filter_h, 20) >> (BIT_DEPTH - 8);
-                tmp[21] = EPEL_FILTER(src, 1, filter_h, 21) >> (BIT_DEPTH - 8);
-                tmp[22] = EPEL_FILTER(src, 1, filter_h, 22) >> (BIT_DEPTH - 8);
-                tmp[23] = EPEL_FILTER(src, 1, filter_h, 23) >> (BIT_DEPTH - 8);
-                tmp[24] = EPEL_FILTER(src, 1, filter_h, 24) >> (BIT_DEPTH - 8);
-                tmp[25] = EPEL_FILTER(src, 1, filter_h, 25) >> (BIT_DEPTH - 8);
-                tmp[26] = EPEL_FILTER(src, 1, filter_h, 26) >> (BIT_DEPTH - 8);
-                tmp[27] = EPEL_FILTER(src, 1, filter_h, 27) >> (BIT_DEPTH - 8);
-                tmp[28] = EPEL_FILTER(src, 1, filter_h, 28) >> (BIT_DEPTH - 8);
-                tmp[29] = EPEL_FILTER(src, 1, filter_h, 29) >> (BIT_DEPTH - 8);
-                tmp[30] = EPEL_FILTER(src, 1, filter_h, 30) >> (BIT_DEPTH - 8);
-                tmp[31] = EPEL_FILTER(src, 1, filter_h, 31) >> (BIT_DEPTH - 8);
-           }
-        } else {
-    for (y = 0; y < height + epel_extra; y++) {
-        for (x = 0; x < width; x++)
-            tmp[x] = EPEL_FILTER(src, 1, filter_h, x) >> (BIT_DEPTH - 8);
-        src += srcstride;
-        tmp += tmpstride;
-
-    } }
+    if (width <= 32) {
+        for (y = 0; y < height + epel_extra; y++, src += srcstride, tmp += tmpstride) {
+            tmp[0] = EPEL_FILTER(src, 1, filter_h, 0) >> (BIT_DEPTH - 8);
+            tmp[1] = EPEL_FILTER(src, 1, filter_h, 1) >> (BIT_DEPTH - 8);
+            if (width == 2) continue;
+            tmp[2] = EPEL_FILTER(src, 1, filter_h, 2) >> (BIT_DEPTH - 8);
+            tmp[3] = EPEL_FILTER(src, 1, filter_h, 3) >> (BIT_DEPTH - 8);
+            if (width == 4) continue;
+            tmp[4] = EPEL_FILTER(src, 1, filter_h, 4) >> (BIT_DEPTH - 8);
+            tmp[5] = EPEL_FILTER(src, 1, filter_h, 5) >> (BIT_DEPTH - 8);
+            tmp[6] = EPEL_FILTER(src, 1, filter_h, 6) >> (BIT_DEPTH - 8);
+            tmp[7] = EPEL_FILTER(src, 1, filter_h, 7) >> (BIT_DEPTH - 8);
+            if (width <= 8) continue;
+            tmp[8] = EPEL_FILTER(src, 1, filter_h, 8) >> (BIT_DEPTH - 8);
+            tmp[9] = EPEL_FILTER(src, 1, filter_h, 9) >> (BIT_DEPTH - 8);
+            tmp[10] = EPEL_FILTER(src, 1, filter_h, 10) >> (BIT_DEPTH - 8);
+            tmp[11] = EPEL_FILTER(src, 1, filter_h, 11) >> (BIT_DEPTH - 8);
+            tmp[12] = EPEL_FILTER(src, 1, filter_h, 12) >> (BIT_DEPTH - 8);
+            tmp[13] = EPEL_FILTER(src, 1, filter_h, 13) >> (BIT_DEPTH - 8);
+            tmp[14] = EPEL_FILTER(src, 1, filter_h, 14) >> (BIT_DEPTH - 8);
+            tmp[15] = EPEL_FILTER(src, 1, filter_h, 15) >> (BIT_DEPTH - 8);
+            if (width <= 16) continue;
+            tmp[16] = EPEL_FILTER(src, 1, filter_h, 16) >> (BIT_DEPTH - 8);
+            tmp[17] = EPEL_FILTER(src, 1, filter_h, 17) >> (BIT_DEPTH - 8);
+            tmp[18] = EPEL_FILTER(src, 1, filter_h, 18) >> (BIT_DEPTH - 8);
+            tmp[19] = EPEL_FILTER(src, 1, filter_h, 19) >> (BIT_DEPTH - 8);
+            tmp[20] = EPEL_FILTER(src, 1, filter_h, 20) >> (BIT_DEPTH - 8);
+            tmp[21] = EPEL_FILTER(src, 1, filter_h, 21) >> (BIT_DEPTH - 8);
+            tmp[22] = EPEL_FILTER(src, 1, filter_h, 22) >> (BIT_DEPTH - 8);
+            tmp[23] = EPEL_FILTER(src, 1, filter_h, 23) >> (BIT_DEPTH - 8);
+            tmp[24] = EPEL_FILTER(src, 1, filter_h, 24) >> (BIT_DEPTH - 8);
+            tmp[25] = EPEL_FILTER(src, 1, filter_h, 25) >> (BIT_DEPTH - 8);
+            tmp[26] = EPEL_FILTER(src, 1, filter_h, 26) >> (BIT_DEPTH - 8);
+            tmp[27] = EPEL_FILTER(src, 1, filter_h, 27) >> (BIT_DEPTH - 8);
+            tmp[28] = EPEL_FILTER(src, 1, filter_h, 28) >> (BIT_DEPTH - 8);
+            tmp[29] = EPEL_FILTER(src, 1, filter_h, 29) >> (BIT_DEPTH - 8);
+            tmp[30] = EPEL_FILTER(src, 1, filter_h, 30) >> (BIT_DEPTH - 8);
+            tmp[31] = EPEL_FILTER(src, 1, filter_h, 31) >> (BIT_DEPTH - 8);
+        }
+    } else {
+        for (y = 0; y < height + epel_extra; y++) {
+            for (x = 0; x < width; x++)
+                tmp[x] = EPEL_FILTER(src, 1, filter_h, x) >> (BIT_DEPTH - 8);
+            src += srcstride;
+            tmp += tmpstride;
+        }
+    }
 
     tmp = tmp_array + epel_extra_before * tmpstride;
 
