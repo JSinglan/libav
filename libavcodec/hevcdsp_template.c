@@ -532,8 +532,8 @@ static void FUNC(put_hevc_epel_pixels)(int16_t *dst, ptrdiff_t dststride,
     }
 }
 
-#define EPEL_FILTER(src, stride, F) \
-    (F[0]*src[x-stride] + F[1]*src[x] + F[2]*src[x+stride] + F[3]*src[x+2*stride])
+#define EPEL_FILTER(src, stride, F, z) \
+    (F[0]*src[(z)-stride] + F[1]*src[(z)] + F[2]*src[(z)+stride] + F[3]*src[(z)+2*stride])
 
 static void FUNC(put_hevc_epel_h)(int16_t *dst, ptrdiff_t dststride,
                                   uint8_t *_src, ptrdiff_t _srcstride,
@@ -546,7 +546,7 @@ static void FUNC(put_hevc_epel_h)(int16_t *dst, ptrdiff_t dststride,
 
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++)
-            dst[x] = EPEL_FILTER(src, 1, filter) >> (BIT_DEPTH - 8);
+            dst[x] = EPEL_FILTER(src, 1, filter, x) >> (BIT_DEPTH - 8);
         src += srcstride;
         dst += dststride;
     }
@@ -564,7 +564,7 @@ static void FUNC(put_hevc_epel_v)(int16_t *dst, ptrdiff_t dststride,
 
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++)
-            dst[x] = EPEL_FILTER(src, srcstride, filter) >> (BIT_DEPTH - 8);
+            dst[x] = EPEL_FILTER(src, srcstride, filter, x) >> (BIT_DEPTH - 8);
         src += srcstride;
         dst += dststride;
     }
@@ -589,7 +589,7 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
 
     for (y = 0; y < height + epel_extra; y++) {
         for (x = 0; x < width; x++)
-            tmp[x] = EPEL_FILTER(src, 1, filter_h) >> (BIT_DEPTH - 8);
+            tmp[x] = EPEL_FILTER(src, 1, filter_h, x) >> (BIT_DEPTH - 8);
         src += srcstride;
         tmp += tmpstride;
     }
@@ -598,12 +598,13 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
 
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++)
-            dst[x] = EPEL_FILTER(tmp, tmpstride, filter_v) >> 6;
+            dst[x] = EPEL_FILTER(tmp, tmpstride, filter_v, x) >> 6;
         tmp += tmpstride;
         dst += dststride;
     }
 }
 
+#define hevc_unweight(z) dst[z] = av_clip_pixel((src[z] + offset) >> shift)
 static void FUNC(put_unweighted_pred)(uint8_t *_dst, ptrdiff_t _dststride,
                                       int16_t *src, ptrdiff_t srcstride,
                                       int width, int height)
@@ -618,14 +619,57 @@ static void FUNC(put_unweighted_pred)(uint8_t *_dst, ptrdiff_t _dststride,
     #else
     int offset = 0;
     #endif
+    if (width <= 32 /*&& (width & (width - 1)) == 0*/) { // check that width is power of two
+        for (y = 0; y < height; y++, dst += dststride, src += srcstride) {
+            hevc_unweight(0);
+            hevc_unweight(1);
+            if (width == 2) continue;
+            hevc_unweight(2);
+            hevc_unweight(3);
+            if (width == 4) continue;
+            hevc_unweight(4);
+            hevc_unweight(5);
+            hevc_unweight(6);
+            hevc_unweight(7);
+            if (width <= 8) continue;
+            hevc_unweight(8);
+            hevc_unweight(9);
+            hevc_unweight(10);
+            hevc_unweight(11);
+            hevc_unweight(12);
+            hevc_unweight(13);
+            hevc_unweight(14);
+            hevc_unweight(15);
+            if (width <= 16) continue;
+            hevc_unweight(16);
+            hevc_unweight(17);
+            hevc_unweight(18);
+            hevc_unweight(19);
+            hevc_unweight(20);
+            hevc_unweight(21);
+            hevc_unweight(22);
+            hevc_unweight(23);
+            hevc_unweight(24);
+            hevc_unweight(25);
+            hevc_unweight(26);
+            hevc_unweight(27);
+            hevc_unweight(28);
+            hevc_unweight(29);
+            hevc_unweight(30);
+            hevc_unweight(31);
+        }
+    } else {
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++)
             dst[x] = av_clip_pixel((src[x] + offset) >> shift);
         dst += dststride;
         src += srcstride;
     }
+            }
 }
+#undef hevc_unweight
 
+#define hevc_weight(z) dst[z] = av_clip_pixel((src1[z] + src2[z] + offset) >> shift)
 static void FUNC(put_weighted_pred_avg)(uint8_t *_dst, ptrdiff_t _dststride,
                                         int16_t *src1, int16_t *src2, ptrdiff_t srcstride,
                                         int width, int height)
@@ -640,15 +684,57 @@ static void FUNC(put_weighted_pred_avg)(uint8_t *_dst, ptrdiff_t _dststride,
 #else
     int offset = 0;
 #endif
-    for (y = 0; y < height; y++) {
-        for (x = 0; x < width; x++)
-            dst[x] = av_clip_pixel((src1[x] + src2[x] + offset) >> shift);
-        dst += dststride;
-        src1 += srcstride;
-        src2 += srcstride;
+    if (width <= 32 /*&& (width & (width - 1)) == 0*/) { // check that width is power of two
+        for (y = 0; y < height; y++, dst += dststride, src1 += srcstride, src2 += srcstride) {
+            hevc_weight(0);
+            hevc_weight(1);
+            if (width == 2) continue;
+            hevc_weight(2);
+            hevc_weight(3);
+            if (width == 4) continue;
+            hevc_weight(4);
+            hevc_weight(5);
+            hevc_weight(6);
+            hevc_weight(7);
+            if (width <= 8) continue;
+            hevc_weight(8);
+            hevc_weight(9);
+            hevc_weight(10);
+            hevc_weight(11);
+            hevc_weight(12);
+            hevc_weight(13);
+            hevc_weight(14);
+            hevc_weight(15);
+            if (width <= 16) continue;
+            hevc_weight(16);
+            hevc_weight(17);
+            hevc_weight(18);
+            hevc_weight(19);
+            hevc_weight(20);
+            hevc_weight(21);
+            hevc_weight(22);
+            hevc_weight(23);
+            hevc_weight(24);
+            hevc_weight(25);
+            hevc_weight(26);
+            hevc_weight(27);
+            hevc_weight(28);
+            hevc_weight(29);
+            hevc_weight(30);
+            hevc_weight(31);
+        }
+    } else {
+        for (y = 0; y < height; y++) {
+            for (x = 0; x < width; x++)
+                hevc_weight(x);
+            dst += dststride;
+            src1 += srcstride;
+            src2 += srcstride;
+        }
     }
 }
 
+#undef hevc_weight
 
 // line zero
 #define P3 pix[-4*xstride]
