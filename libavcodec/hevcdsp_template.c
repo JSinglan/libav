@@ -542,7 +542,7 @@ static void FUNC(put_hevc_epel_h)(int16_t *dst, ptrdiff_t dststride,
     int x, y;
     pixel *src = (pixel*)_src;
     ptrdiff_t srcstride = _srcstride/sizeof(pixel);
-    const int8_t *filter = epel_filters[mx-1];
+    const int *filter = epel_filters[mx-1];
 
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++)
@@ -560,7 +560,7 @@ static void FUNC(put_hevc_epel_v)(int16_t *dst, ptrdiff_t dststride,
     pixel *src = (pixel*)_src;
     ptrdiff_t srcstride = _srcstride/sizeof(pixel);
 
-    const int8_t *filter = epel_filters[my-1];
+    const int *filter = epel_filters[my-1];
 
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++)
@@ -578,8 +578,8 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
     pixel *src = (pixel*)_src;
     ptrdiff_t srcstride = _srcstride/sizeof(pixel);
 
-    const int8_t *filter_h = epel_filters[mx-1];
-    const int8_t *filter_v = epel_filters[my-1];
+    const int *filter_h = epel_filters[mx-1];
+    const int *filter_v = epel_filters[my-1];
 
     int tmpstride = MAX_PB_SIZE;
     int16_t tmp_array[(MAX_PB_SIZE+3)*MAX_PB_SIZE];

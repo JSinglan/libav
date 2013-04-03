@@ -31,7 +31,7 @@ static const int epel_extra_before = 1;
 static const int epel_extra_after = 2;
 static const int epel_extra = 3;
 
-static const int8_t epel_filters[7][4] = {
+static const int epel_filters[7][4] = {
     { -2,  58,  10,  -2 },
     { -4,  54,  16,  -2 },
     { -6,  46,  28,  -4 },
