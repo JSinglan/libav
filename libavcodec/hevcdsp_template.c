@@ -535,8 +535,9 @@ static void FUNC(put_hevc_epel_pixels)(int16_t *dst, ptrdiff_t dststride,
 #define EPEL_FILTER(src, stride, F, z) \
     (F[0]*src[(z)-stride] + F[1]*src[(z)] + F[2]*src[(z)+stride] + F[3]*src[(z)+2*stride])
 #endif
+
 #define EPEL_FILTER(src, stride, f, z) \
-({int ret; \
+({int ret = 0; \
     switch (f) {\
     case 0:\
         ret = -2 * src[z-stride] + 58 * src[z] + 10 * src[z+stride] - 2 * src[z+2*stride];\
@@ -553,6 +554,7 @@ static void FUNC(put_hevc_epel_pixels)(int16_t *dst, ptrdiff_t dststride,
     case 6:\
         ret = -2 * src[z-stride] + 10 * src[z] + 58 * src[z+stride] - 2 * src[z+2*stride];\
     } ret;})
+
 static void FUNC(put_hevc_epel_h)(int16_t *dst, ptrdiff_t dststride,
                                   uint8_t *_src, ptrdiff_t _srcstride,
                                   int width, int height, int mx, int my)
@@ -560,7 +562,6 @@ static void FUNC(put_hevc_epel_h)(int16_t *dst, ptrdiff_t dststride,
     int x, y;
     pixel *src = (pixel*)_src;
     ptrdiff_t srcstride = _srcstride/sizeof(pixel);
-    //const int *filter = epel_filters[mx-1];
     const int filter = mx - 1;
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++)
@@ -577,9 +578,6 @@ static void FUNC(put_hevc_epel_v)(int16_t *dst, ptrdiff_t dststride,
     int x, y;
     pixel *src = (pixel*)_src;
     ptrdiff_t srcstride = _srcstride/sizeof(pixel);
-
-    //const int *filter = epel_filters[my-1];
-
     const int filter = my - 1;
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++)
@@ -597,9 +595,6 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
     pixel *src = (pixel*)_src;
     ptrdiff_t srcstride = _srcstride/sizeof(pixel);
 
-    /*const int *filter_h = epel_filters[mx-1];
-    const int *filter_v = epel_filters[my-1];
-*/
     const int filter_h = mx-1;
     const int filter_v = my-1;
     int tmpstride = MAX_PB_SIZE;
@@ -858,7 +853,7 @@ static void FUNC(put_weighted_pred_avg)(uint8_t *_dst, ptrdiff_t _dststride,
 #define TQ2 pix[2*xstride+3*ystride]
 #define TQ3 pix[3*xstride+3*ystride]
 
-static void FUNC(hevc_loop_filter_luma)(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride,
+static av_always_inline av_flatten void FUNC(hevc_loop_filter_luma)(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride,
                                         int no_p, int no_q, int _beta, int _tc)
 {
     int d;
@@ -944,7 +939,7 @@ static void FUNC(hevc_loop_filter_luma)(uint8_t *_pix, ptrdiff_t _xstride, ptrdi
     }
 }
 
-static void FUNC(hevc_loop_filter_chroma)(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride, int no_p, int no_q, int _tc)
+static av_always_inline av_flatten void FUNC(hevc_loop_filter_chroma)(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride, int no_p, int no_q, int _tc)
 {
     int d;
     pixel *pix = (pixel*)_pix;
