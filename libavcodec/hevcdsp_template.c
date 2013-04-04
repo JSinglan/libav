@@ -424,13 +424,13 @@ static void FUNC(put_hevc_qpel_pixels)(int16_t *dst, ptrdiff_t dststride,
     }
 }
 
-#define QPEL_FILTER_1(src, stride)                                             \
+#define QPEL_FILTER_1(src, stride, x)                                             \
     (-src[x-3*stride] + 4*src[x-2*stride] - 10*src[x-stride] + 58*src[x] +     \
      17*src[x+stride] - 5*src[x+2*stride] + 1*src[x+3*stride])
-#define QPEL_FILTER_2(src, stride)                                              \
+#define QPEL_FILTER_2(src, stride, x)                                              \
     (-src[x-3*stride] + 4*src[x-2*stride] - 11*src[x-stride] + 40*src[x] +      \
      40*src[x+stride] - 11*src[x+2*stride] + 4*src[x+3*stride] - src[x+4*stride])
-#define QPEL_FILTER_3(src, stride)                                             \
+#define QPEL_FILTER_3(src, stride, x)                                             \
     (src[x-2*stride] - 5*src[x-stride] + 17*src[x] + 58*src[x+stride]          \
      - 10*src[x+2*stride] + 4*src[x+3*stride] - src[x+4*stride])
 
@@ -445,7 +445,7 @@ static void FUNC(put_hevc_qpel_h ## H)(int16_t *dst, ptrdiff_t dststride,    \
                                                                                 \
     for (y = 0; y < height; y++) {                                              \
         for (x = 0; x < width; x++)                                             \
-            dst[x] = QPEL_FILTER_ ## H (src, 1) >> (BIT_DEPTH - 8);             \
+            dst[x] = QPEL_FILTER_ ## H (src, 1, x) >> (BIT_DEPTH - 8);             \
         src += srcstride;                                                       \
         dst += dststride;                                                       \
     }                                                                           \
@@ -462,14 +462,14 @@ static void FUNC(put_hevc_qpel_v ## V)(int16_t *dst, ptrdiff_t dststride,    \
                                                                                 \
     for (y = 0; y < height; y++)  {                                             \
         for (x = 0; x < width; x++)                                             \
-            dst[x] = QPEL_FILTER_ ## V (src, srcstride) >> (BIT_DEPTH - 8);     \
+            dst[x] = QPEL_FILTER_ ## V (src, srcstride, x) >> (BIT_DEPTH - 8);     \
         src += srcstride;                                                       \
         dst += dststride;                                                       \
     }                                                                           \
 }
 
 #define PUT_HEVC_QPEL_HV(H, V)                                                            \
-static void FUNC(put_hevc_qpel_h ## H ## v ## V )(int16_t *dst, ptrdiff_t dststride,   \
+static void FUNC(put_hevc_qpel_h ## H ## v ## V )(int16_t *dst, ptrdiff_t dststride,      \
                                                   uint8_t *_src, ptrdiff_t _srcstride,    \
                                                   int width, int height)                  \
 {                                                                                         \
@@ -478,25 +478,106 @@ static void FUNC(put_hevc_qpel_h ## H ## v ## V )(int16_t *dst, ptrdiff_t dststr
     ptrdiff_t srcstride = _srcstride/sizeof(pixel);                                       \
                                                                                           \
     int tmpstride = MAX_PB_SIZE;                                                          \
-    int16_t tmp_array[(MAX_PB_SIZE+7)*MAX_PB_SIZE];                                         \
-    int16_t *tmp = tmp_array;                                                               \
+    int16_t tmp_array[(MAX_PB_SIZE+7)*MAX_PB_SIZE];                                       \
+    int16_t *tmp = tmp_array;                                                             \
                                                                                           \
     src -= qpel_extra_before[V] * srcstride;                                              \
                                                                                           \
-    for (y = 0; y < height + qpel_extra[V]; y++) {                                        \
-        for (x = 0; x < width; x++)                                                       \
-            tmp[x] = QPEL_FILTER_ ## H (src, 1) >> (BIT_DEPTH - 8);                       \
-        src += srcstride;                                                                 \
-        tmp += tmpstride;                                                                 \
+    if (width <= 32) {                                                                    \
+        for (y = 0; y < height + qpel_extra[V]; y++, src += srcstride, tmp += tmpstride) {\
+            tmp[0] = QPEL_FILTER_ ## H (src, 1, 0) >> (BIT_DEPTH - 8);                    \
+            tmp[1] = QPEL_FILTER_ ## H (src, 1, 1) >> (BIT_DEPTH - 8);                    \
+            if (width == 2) continue;                                                     \
+            tmp[2] = QPEL_FILTER_ ## H (src, 1, 2) >> (BIT_DEPTH - 8);                    \
+            tmp[3] = QPEL_FILTER_ ## H (src, 1, 3) >> (BIT_DEPTH - 8);                    \
+            if (width == 4) continue;                                                     \
+            tmp[4] = QPEL_FILTER_ ## H (src, 1, 4) >> (BIT_DEPTH - 8);                    \
+            tmp[5] = QPEL_FILTER_ ## H (src, 1, 5) >> (BIT_DEPTH - 8);                    \
+            tmp[6] = QPEL_FILTER_ ## H (src, 1, 6) >> (BIT_DEPTH - 8);                    \
+            tmp[7] = QPEL_FILTER_ ## H (src, 1, 7) >> (BIT_DEPTH - 8);                    \
+            if (width <= 8) continue;                                                     \
+            tmp[8] = QPEL_FILTER_ ## H (src, 1, 8) >> (BIT_DEPTH - 8);                    \
+            tmp[9] = QPEL_FILTER_ ## H (src, 1, 9) >> (BIT_DEPTH - 8);                    \
+            tmp[10] = QPEL_FILTER_ ## H (src, 1, 10) >> (BIT_DEPTH - 8);                  \
+            tmp[11] = QPEL_FILTER_ ## H (src, 1, 11) >> (BIT_DEPTH - 8);                  \
+            tmp[12] = QPEL_FILTER_ ## H (src, 1, 12) >> (BIT_DEPTH - 8);                  \
+            tmp[13] = QPEL_FILTER_ ## H (src, 1, 13) >> (BIT_DEPTH - 8);                  \
+            tmp[14] = QPEL_FILTER_ ## H (src, 1, 14) >> (BIT_DEPTH - 8);                  \
+            tmp[15] = QPEL_FILTER_ ## H (src, 1, 15) >> (BIT_DEPTH - 8);                  \
+            if (width <= 16) continue;                                                    \
+            tmp[16] = QPEL_FILTER_ ## H (src, 1, 16) >> (BIT_DEPTH - 8);                  \
+            tmp[17] = QPEL_FILTER_ ## H (src, 1, 17) >> (BIT_DEPTH - 8);                  \
+            tmp[18] = QPEL_FILTER_ ## H (src, 1, 18) >> (BIT_DEPTH - 8);                  \
+            tmp[19] = QPEL_FILTER_ ## H (src, 1, 19) >> (BIT_DEPTH - 8);                  \
+            tmp[20] = QPEL_FILTER_ ## H (src, 1, 20) >> (BIT_DEPTH - 8);                  \
+            tmp[21] = QPEL_FILTER_ ## H (src, 1, 21) >> (BIT_DEPTH - 8);                  \
+            tmp[22] = QPEL_FILTER_ ## H (src, 1, 22) >> (BIT_DEPTH - 8);                  \
+            tmp[23] = QPEL_FILTER_ ## H (src, 1, 23) >> (BIT_DEPTH - 8);                  \
+            tmp[24] = QPEL_FILTER_ ## H (src, 1, 24) >> (BIT_DEPTH - 8);                  \
+            tmp[25] = QPEL_FILTER_ ## H (src, 1, 25) >> (BIT_DEPTH - 8);                  \
+            tmp[26] = QPEL_FILTER_ ## H (src, 1, 26) >> (BIT_DEPTH - 8);                  \
+            tmp[27] = QPEL_FILTER_ ## H (src, 1, 27) >> (BIT_DEPTH - 8);                  \
+            tmp[28] = QPEL_FILTER_ ## H (src, 1, 28) >> (BIT_DEPTH - 8);                  \
+            tmp[29] = QPEL_FILTER_ ## H (src, 1, 29) >> (BIT_DEPTH - 8);                  \
+            tmp[30] = QPEL_FILTER_ ## H (src, 1, 30) >> (BIT_DEPTH - 8);                  \
+            tmp[31] = QPEL_FILTER_ ## H (src, 1, 31) >> (BIT_DEPTH - 8);                  \
+        }                                                                                 \
+    } else {                                                                              \
+        for (y = 0; y < height + qpel_extra[V]; y++) {                                    \
+            for (x = 0; x < width; x++)                                                   \
+                tmp[x] = QPEL_FILTER_ ## H (src, 1, x) >> (BIT_DEPTH - 8);                \
+            src += srcstride;                                                             \
+            tmp += tmpstride;                                                             \
+        }                                                                                 \
     }                                                                                     \
-                                                                                          \
     tmp = tmp_array + qpel_extra_before[V] * tmpstride;                                   \
                                                                                           \
-    for (y = 0; y < height; y++) {                                                        \
-        for (x = 0; x < width; x++)                                                       \
-            dst[x] = QPEL_FILTER_ ## V (tmp, tmpstride) >> 6;                             \
-        tmp += tmpstride;                                                                 \
-        dst += dststride;                                                                 \
+    if (width <= 32) {                                                                    \
+        for (y = 0; y < height; y++, tmp += tmpstride, dst += dststride) {                \
+            dst[0] = QPEL_FILTER_ ## V (tmp, tmpstride, 0) >> 6;                          \
+            dst[1] = QPEL_FILTER_ ## V (tmp, tmpstride, 1) >> 6;                          \
+            if (width == 2) continue;                                                     \
+            dst[2] = QPEL_FILTER_ ## V (tmp, tmpstride, 2) >> 6;                          \
+            dst[3] = QPEL_FILTER_ ## V (tmp, tmpstride, 3) >> 6;                          \
+            if (width == 4) continue;                                                     \
+            dst[4] = QPEL_FILTER_ ## V (tmp, tmpstride, 4) >> 6;                          \
+            dst[5] = QPEL_FILTER_ ## V (tmp, tmpstride, 5) >> 6;                          \
+            dst[6] = QPEL_FILTER_ ## V (tmp, tmpstride, 6) >> 6;                          \
+            dst[7] = QPEL_FILTER_ ## V (tmp, tmpstride, 7) >> 6;                          \
+            if (width <= 8) continue;                                                     \
+            dst[8] = QPEL_FILTER_ ## V (tmp, tmpstride, 8) >> 6;                          \
+            dst[9] = QPEL_FILTER_ ## V (tmp, tmpstride, 9) >> 6;                          \
+            dst[10] = QPEL_FILTER_ ## V (tmp, tmpstride, 10) >> 6;                        \
+            dst[11] = QPEL_FILTER_ ## V (tmp, tmpstride, 11) >> 6;                        \
+            dst[12] = QPEL_FILTER_ ## V (tmp, tmpstride, 12) >> 6;                        \
+            dst[13] = QPEL_FILTER_ ## V (tmp, tmpstride, 13) >> 6;                        \
+            dst[14] = QPEL_FILTER_ ## V (tmp, tmpstride, 14) >> 6;                        \
+            dst[15] = QPEL_FILTER_ ## V (tmp, tmpstride, 15) >> 6;                        \
+            if (width <= 16) continue;                                                    \
+            dst[16] = QPEL_FILTER_ ## V (tmp, tmpstride, 16) >> 6;                        \
+            dst[17] = QPEL_FILTER_ ## V (tmp, tmpstride, 17) >> 6;                        \
+            dst[18] = QPEL_FILTER_ ## V (tmp, tmpstride, 18) >> 6;                        \
+            dst[19] = QPEL_FILTER_ ## V (tmp, tmpstride, 19) >> 6;                        \
+            dst[20] = QPEL_FILTER_ ## V (tmp, tmpstride, 20) >> 6;                        \
+            dst[21] = QPEL_FILTER_ ## V (tmp, tmpstride, 21) >> 6;                        \
+            dst[22] = QPEL_FILTER_ ## V (tmp, tmpstride, 22) >> 6;                        \
+            dst[23] = QPEL_FILTER_ ## V (tmp, tmpstride, 23) >> 6;                        \
+            dst[24] = QPEL_FILTER_ ## V (tmp, tmpstride, 24) >> 6;                        \
+            dst[25] = QPEL_FILTER_ ## V (tmp, tmpstride, 25) >> 6;                        \
+            dst[26] = QPEL_FILTER_ ## V (tmp, tmpstride, 26) >> 6;                        \
+            dst[27] = QPEL_FILTER_ ## V (tmp, tmpstride, 27) >> 6;                        \
+            dst[28] = QPEL_FILTER_ ## V (tmp, tmpstride, 28) >> 6;                        \
+            dst[29] = QPEL_FILTER_ ## V (tmp, tmpstride, 29) >> 6;                        \
+            dst[30] = QPEL_FILTER_ ## V (tmp, tmpstride, 30) >> 6;                        \
+            dst[31] = QPEL_FILTER_ ## V (tmp, tmpstride, 31) >> 6;                        \
+        }                                                                                 \
+    } else {                                                                              \
+        for (y = 0; y < height; y++) {                                                    \
+            for (x = 0; x < width; x++)                                                   \
+                dst[x] = QPEL_FILTER_ ## V (tmp, tmpstride, x) >> 6;                      \
+            tmp += tmpstride;                                                             \
+            dst += dststride;                                                             \
+        }                                                                                 \
     }                                                                                     \
 }
 
