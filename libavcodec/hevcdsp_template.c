@@ -622,16 +622,22 @@ static void FUNC(put_hevc_epel_pixels)(int16_t *dst, ptrdiff_t dststride,
     switch (f) {\
     case 0:\
         ret = -2 * src[z-stride] + 58 * src[z] + 10 * src[z+stride] - 2 * src[z+2*stride];\
+        break;\
     case 1:\
         ret = -4 * src[z-stride] + 54 * src[z] + 16 * src[z+stride] - 2 * src[z+2*stride];\
+        break;\
     case 2:\
         ret = -6 * src[z-stride] + 46 * src[z] + 28 * src[z+stride] - 4 * src[z+2*stride];\
+        break;\
     case 3:\
         ret = -4 * src[z-stride] + 36 * src[z] + 36 * src[z+stride] - 4 * src[z+2*stride];\
+        break;\
     case 4:\
         ret = -4 * src[z-stride] + 28 * src[z] + 46 * src[z+stride] - 6 * src[z+2*stride];\
+        break;\
     case 5:\
         ret = -2 * src[z-stride] + 16 * src[z] + 54 * src[z+stride] - 4 * src[z+2*stride];\
+        break;\
     case 6:\
         ret = -2 * src[z-stride] + 10 * src[z] + 58 * src[z+stride] - 2 * src[z+2*stride];\
     } ret;})
