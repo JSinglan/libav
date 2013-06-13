@@ -49,8 +49,8 @@ static void decode_nal_sei_decoded_picture_hash(HEVCContext *s, int payload_size
             for( i = 0; i < 16; i++)
                 picture_md5[i] = get_bits(gb, 8);
 
-            if (!compare_md5(picture_md5, s->md5[cIdx]) && (cIdx == 0))
-                av_log(s->avctx, AV_LOG_ERROR, "md5 not ok\n");
+            if (!compare_md5(picture_md5, s->md5[cIdx]))
+                av_log(s->avctx, AV_LOG_ERROR, "md5 for cIdx %d is not ok\n", cIdx);
         } else if( hash_type == 1 ) {
             picture_crc = get_bits(gb, 16);
         } else if( hash_type == 2 ) {

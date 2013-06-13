@@ -35,7 +35,7 @@
 #include "hevcdsp_template.c"
 #undef BIT_DEPTH
 
-void ff_hevc_dsp_init(HEVCDSPContext *hevcdsp, int bit_depth)
+void ff_hevc_dsp_init(HEVCDSPContext *hevcdsp, int bit_depth, int pcm_deblock)
 {
 #undef FUNC
 #define FUNC(a, depth) a ## _ ## depth
@@ -86,8 +86,11 @@ void ff_hevc_dsp_init(HEVCDSPContext *hevcdsp, int bit_depth)
     hevcdsp->weighted_pred_avg_luma = FUNC(weighted_pred_avg_luma, depth);      \
     hevcdsp->weighted_pred_avg_chroma = FUNC(weighted_pred_avg_chroma, depth);  \
                                                                                 \
-    hevcdsp->hevc_loop_filter_luma = FUNC(hevc_loop_filter_luma, depth);        \
-    hevcdsp->hevc_loop_filter_chroma = FUNC(hevc_loop_filter_chroma, depth);
+    hevcdsp->hevc_h_loop_filter_luma = FUNC(hevc_h_loop_filter_luma, depth);        \
+    hevcdsp->hevc_v_loop_filter_luma = FUNC(hevc_v_loop_filter_luma, depth);        \
+    hevcdsp->hevc_h_loop_filter_chroma = FUNC(hevc_h_loop_filter_chroma, depth); \
+    hevcdsp->hevc_v_loop_filter_chroma = FUNC(hevc_v_loop_filter_chroma, depth);
+
 
     switch (bit_depth) {
     case 9:
@@ -100,4 +103,6 @@ void ff_hevc_dsp_init(HEVCDSPContext *hevcdsp, int bit_depth)
         HEVC_DSP(8);
         break;
     }
+
+    if (ARCH_X86) ff_hevcdsp_init_x86(hevcdsp, bit_depth, pcm_deblock);
 }
