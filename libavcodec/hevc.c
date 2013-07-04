@@ -2474,7 +2474,7 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
 
     *got_output = ret;
 
-    if (s->decode_checksum_sei && s->HEVCsc->is_decoded) {
+    if (s->decode_checksum_sei) {
         int cIdx;
         uint8_t md5[3][16];
         AVFrame *frame = sc->ref->frame;
