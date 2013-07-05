@@ -444,11 +444,7 @@ static int hls_slice_header(HEVCContext *s)
 
             sh->max_num_merge_cand = 5 - get_ue_golomb(gb);
         }
-
-        ret = ff_hevc_set_ref_poc_list(s);
-        if (ret < 0)
-            return ret;
-
+        ff_hevc_set_ref_poc_list(s);
         sh->slice_qp_delta = get_se_golomb(gb);
         if (sc->pps->pic_slice_level_chroma_qp_offsets_present_flag) {
             sh->slice_cb_qp_offset = get_se_golomb(gb);

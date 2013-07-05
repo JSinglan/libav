@@ -40,8 +40,6 @@ static int find_ref_idx(HEVCContext *s, int poc)
     }
     av_log(s->avctx, AV_LOG_ERROR,
            "Could not find ref with POC %d\n", poc);
-    if (s->avctx->err_recognition & AV_EF_EXPLODE)
-        return AVERROR_INVALIDDATA;
     return 0;
 }
 
@@ -210,12 +208,12 @@ void ff_hevc_compute_poc(HEVCContext *s, int poc_lsb)
     sc->poc = iPOCmsb + poc_lsb;
 }
 
-static int set_ref_pic_list(HEVCContext *s)
+static void set_ref_pic_list(HEVCContext *s)
 {
     HEVCSharedContext *sc = s->HEVCsc;
     SliceHeader *sh = &sc->sh;
     RefPicList  *refPocList = sc->sh.refPocList;
-    RefPicList  *refPicList;
+    RefPicList  *refPicList = sc->DPB[ff_hevc_find_next_ref(s, sc->poc)].refPicList;
     RefPicList  refPicListTmp[2]= {{{0}}};
 
     uint8_t num_ref_idx_lx_act[2];
@@ -225,11 +223,6 @@ static int set_ref_pic_list(HEVCContext *s)
     uint8_t first_list;
     uint8_t sec_list;
     uint8_t i, list_idx;
-
-    int ref = ff_hevc_find_next_ref(s, sc->poc);
-    if (ref < 0)
-        return ref;
-    refPicList = sc->DPB[ref].refPicList;
 
     num_ref_idx_lx_act[0] = sh->num_ref_idx_l0_active;
     num_ref_idx_lx_act[1] = sh->num_ref_idx_l1_active;
@@ -282,12 +275,11 @@ static int set_ref_pic_list(HEVCContext *s)
             }
         }
     }
-    return 0;
 }
 
-int ff_hevc_set_ref_poc_list(HEVCContext *s)
+void ff_hevc_set_ref_poc_list(HEVCContext *s)
 {
-    int i, ret;
+    int i;
     int j = 0;
     int k = 0;
     HEVCSharedContext *sc = s->HEVCsc;
@@ -299,30 +291,26 @@ int ff_hevc_set_ref_poc_list(HEVCContext *s)
         for (i = 0; i < rps->num_negative_pics; i ++) {
             if ( rps->used[i] == 1 ) {
                 refPocList[ST_CURR_BEF].list[j] = sc->poc + rps->delta_poc[i];
-                ret = refPocList[ST_CURR_BEF].idx[j] = find_ref_idx(s, refPocList[ST_CURR_BEF].list[j]);
+                refPocList[ST_CURR_BEF].idx[j]  = find_ref_idx(s, refPocList[ST_CURR_BEF].list[j]);
                 j++;
             } else {
                 refPocList[ST_FOLL].list[k] = sc->poc + rps->delta_poc[i];
-                ret = refPocList[ST_FOLL].idx[k]  = find_ref_idx(s, refPocList[ST_FOLL].list[k]);
+                refPocList[ST_FOLL].idx[k]  = find_ref_idx(s, refPocList[ST_FOLL].list[k]);
                 k++;
             }
-            if (ret < 0)
-                return ret;
         }
         refPocList[ST_CURR_BEF].numPic = j;
         j = 0;
         for (i = rps->num_negative_pics; i < rps->num_delta_pocs; i ++) {
             if (rps->used[i] == 1) {
                 refPocList[ST_CURR_AFT].list[j] = sc->poc + rps->delta_poc[i];
-                ret = refPocList[ST_CURR_AFT].idx[j] = find_ref_idx(s, refPocList[ST_CURR_AFT].list[j]);
+                refPocList[ST_CURR_AFT].idx[j]  = find_ref_idx(s, refPocList[ST_CURR_AFT].list[j]);
                 j++;
             } else {
                 refPocList[ST_FOLL].list[k] = sc->poc + rps->delta_poc[i];
-                ret = refPocList[ST_FOLL].idx[k] = find_ref_idx(s, refPocList[ST_FOLL].list[k]);
+                refPocList[ST_FOLL].idx[k]  = find_ref_idx(s, refPocList[ST_FOLL].list[k]);
                 k++;
             }
-            if (ret < 0)
-                return ret;
         }
         refPocList[ST_CURR_AFT].numPic = j;
         refPocList[ST_FOLL].numPic = k;
@@ -331,24 +319,19 @@ int ff_hevc_set_ref_poc_list(HEVCContext *s)
             if (long_rps->delta_poc_msb_present_flag[i])
                 pocLt += sc->poc - long_rps->DeltaPocMsbCycleLt[i] * MaxPicOrderCntLsb - sc->sh.pic_order_cnt_lsb;
             if (long_rps->UsedByCurrPicLt[i]) {
-                ret = refPocList[LT_CURR].idx[j]  = find_ref_idx(s, pocLt);
+                refPocList[LT_CURR].idx[j]  = find_ref_idx(s, pocLt);
                 refPocList[LT_CURR].list[j] = sc->DPB[refPocList[LT_CURR].idx[j]].poc;
                 j++;
             } else {
-                ret = refPocList[LT_FOLL].idx[k]  = find_ref_idx(s, pocLt);
+                refPocList[LT_FOLL].idx[k]  = find_ref_idx(s, pocLt);
                 refPocList[LT_FOLL].list[k] = sc->DPB[refPocList[LT_FOLL].idx[k]].poc;
                 k++;
             }
-            if (ret < 0)
-                return ret;
         }
         refPocList[LT_CURR].numPic = j;
         refPocList[LT_FOLL].numPic = k;
-        ret = set_ref_pic_list(s);
-        if (ret < 0)
-            return ret;
+        set_ref_pic_list(s);
     }
-    return 0;
 }
 
 int ff_hevc_get_NumPocTotalCurr(HEVCContext *s) {
