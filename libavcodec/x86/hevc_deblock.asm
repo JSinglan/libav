@@ -373,12 +373,12 @@ ff_hevc_luma_deblock_body:
     ;decide between strong and weak filtering
     ;tc25 calculations
     movd      m8, [r3]; tc0
-    mov       r2, [r3];
+    mov       r2d, [r3];
     add       r3, 4;
     punpcklwd m8, m8
     movd      m9, [r3]; tc1
-    add       r2, [r3]; tc0 + tc1
-    cmp       r2, 0;
+    add       r2d, [r3]; tc0 + tc1
+    cmp       r2d, 0;
     je        bypasswrite
     punpcklwd m9, m9
     shufps    m8, m9, 0; tc0, tc1
