@@ -279,7 +279,7 @@ ff_hevc_chroma_deblock_body:
     paddw     m1, m5; p0 + delta0
     psubw     m2, m5; q0 - delta0
     ret
-
+%if ARCH_X86_64
 INIT_XMM ssse3
 ALIGN 16
 ; input in m0 ... m7, betas in r2 tcs in r3. Output in m1...m6
@@ -658,7 +658,7 @@ ready:
 bypasswrite:
     mov r4, 1
     ret
-
+%endif
 INIT_XMM sse2
 ;-----------------------------------------------------------------------------
 ; void ff_hevc_v_loop_filter_chroma(uint8_t *_pix, ptrdiff_t _stride, int *_tc, uint8_t *_no_p, uint8_t *_no_q)
@@ -695,7 +695,7 @@ cglobal hevc_h_loop_filter_chroma_8, 3, 6, 8
     movq [r5+r1], m1
     movq [r0], m2
     RET
-
+%if ARCH_X86_64
 INIT_XMM ssse3
 ;-----------------------------------------------------------------------------
 ;    void ff_hevc_v_loop_filter_luma(uint8_t *_pix, ptrdiff_t _stride, int *_beta, int *_tc, uint8_t *_no_p, uint8_t *_no_q);
@@ -755,3 +755,4 @@ cglobal hevc_h_loop_filter_luma_8, 4, 15, 16
     movq     [r0+2*r1], m6;  q2
 bypasshluma:
     RET
+%endif
