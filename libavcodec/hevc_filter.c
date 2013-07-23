@@ -599,19 +599,6 @@ static int is_border(PPS *pps, int x, int y, int ctb_size)	{
 	return 0;
 }
 
-void hls_filters_tiles(HEVCContext *s, int x_ctb, int y_ctb, int ctb_size)
-{
-    if(y_ctb && x_ctb) {
-		if(!is_border(s->HEVCsc->pps, x_ctb-ctb_size, y_ctb-ctb_size, ctb_size))
-        	hls_filter(s, x_ctb-ctb_size, y_ctb-ctb_size);
-        if(x_ctb >= (s->HEVCsc->sps->pic_width_in_luma_samples - ctb_size))
-			if(!is_border(s->HEVCsc->pps, x_ctb, y_ctb-ctb_size, ctb_size))
-            	hls_filter(s, x_ctb, y_ctb-ctb_size);
-        if(y_ctb >= (s->HEVCsc->sps->pic_height_in_luma_samples - ctb_size))
-			if(!is_border(s->HEVCsc->pps, x_ctb-ctb_size, y_ctb, ctb_size))
-            	hls_filter(s, x_ctb-ctb_size, y_ctb);
-    }
-}
 
 
 

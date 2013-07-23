@@ -2074,13 +2074,10 @@ static int hls_decode_entry_tiles(AVCodecContext *avctxt, int *input_ctb_row, in
         more_data = hls_coding_quadtree(s, x_ctb, y_ctb, sc->sps->log2_ctb_size, 0);
         ctb_addr_ts++;
         ff_hevc_save_states(s, ctb_addr_ts);
-  //      hls_filters_tiles(s, x_ctb, y_ctb, ctb_size);
         if (sc->pps->tiles_enabled_flag && (sc->pps->tile_id[ctb_addr_ts] != sc->pps->tile_id[ctb_addr_ts-1])) {
             break;
         }
     }
-//    if (x_ctb + ctb_size >= sc->sps->pic_width_in_luma_samples && y_ctb + ctb_size >= sc->sps->pic_height_in_luma_samples)
-//       hls_filters_tiles(s, x_ctb, y_ctb);
     return ctb_addr_ts;
 }
 
@@ -2701,8 +2698,7 @@ static av_cold int hevc_decode_free(AVCodecContext *avctx)
     HEVCContext *s = avctx->priv_data;
     HEVCSharedContext *sc = s->HEVCsc;
     HEVCLocalContext *lc = s->HEVClc;
-
-/*    av_free(sc->rbsp_buffer);
+    av_free(sc->rbsp_buffer);
     av_free(sc->skipped_bytes_pos);
     av_frame_free(&sc->tmp_frame);
     av_free(sc->cabac_state);
@@ -2711,7 +2707,7 @@ static av_cold int hevc_decode_free(AVCodecContext *avctx)
     av_free(lc->gb);
     av_free(lc->cc);
     av_free(lc->edge_emu_buffer);
- //   av_free(lc->BufferMC);
+    av_free(lc->BufferMC);
 
     for (i = 0; i < MAX_TRANSFORM_DEPTH; i++) {
         av_freep(&lc->tt.cbf_cb[i]);
@@ -2770,7 +2766,7 @@ static av_cold int hevc_decode_free(AVCodecContext *avctx)
     }
     av_freep(&s->HEVClc);
     pic_arrays_free(s);
-    av_freep(&s->HEVCsc); */
+    av_freep(&s->HEVCsc);
     return 0;
 }
 
@@ -2809,7 +2805,7 @@ AVCodec ff_hevc_decoder = {
     .init           = hevc_decode_init,
     .close          = hevc_decode_free,
     .decode         = hevc_decode_frame,
-    .capabilities   = CODEC_CAP_DR1 | CODEC_CAP_DELAY | CODEC_CAP_SLICE_THREADS| CODEC_CAP_FRAME_THREADS,
+    .capabilities   = CODEC_CAP_DR1 | CODEC_CAP_DELAY | CODEC_CAP_SLICE_THREADS,
     .flush          = hevc_decode_flush,
     .long_name      = NULL_IF_CONFIG_SMALL("HEVC (High Efficiency Video Coding)"),
 };
