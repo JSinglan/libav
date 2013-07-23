@@ -9,7 +9,13 @@ OBJS-$(CONFIG_FFT)                     += x86/fft_init.o
 OBJS-$(CONFIG_H264CHROMA)              += x86/h264chroma_init.o
 OBJS-$(CONFIG_H264DSP)                 += x86/h264dsp_init.o
 OBJS-$(CONFIG_H264PRED)                += x86/h264_intrapred_init.o
-OBJS-$(CONFIG_HEVC_DECODER)            += x86/hevcdsp_init.o
+OBJS-$(CONFIG_HEVC_DECODER)            += x86/hevcdsp_init.o          \
+                                          x86/hevc_idct_sse4.o        \
+                                          x86/hevc_mc_sse.o           \
+                                          x86/hevc_dequant_sse4.o     \
+                                          x86/hevc_sao_sse.o          \
+                                          x86/hevcpred_init.o         \
+                                          x86/hevc_intra_pred_sse.o
 OBJS-$(CONFIG_H264QPEL)                += x86/h264_qpel.o
 OBJS-$(CONFIG_HPELDSP)                 += x86/hpeldsp_init.o
 OBJS-$(CONFIG_LPC)                     += x86/lpc.o
