@@ -169,7 +169,8 @@ static int get_pcm(HEVCContext *s, int x, int y)
 {
     HEVCSharedContext *sc = s->HEVCsc;
     int log2_min_pu_size = sc->sps->log2_min_pu_size - 1;
-    int pic_width_in_min_pu = sc->sps->pic_width_in_min_cbs * 4;
+    int pic_width_in_min_pu = s->HEVCsc->sps->pic_width_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
+
     if (x < 0)
         return 0;
     return sc->is_pcm[(y >> log2_min_pu_size) * pic_width_in_min_pu + (x >> log2_min_pu_size)];
@@ -234,11 +235,11 @@ void ff_hevc_sao_filter_CTB(HEVCSharedContext *sc, int x, int y, int c_idx_min, 
         for(class_index = 0; class_index < class && c_idx>=c_idx_min && c_idx<c_idx_max; class_index++)    {
             switch (sao[class_index]->type_idx[c_idx]) {
                 case SAO_BAND:
-                    sc->hevcdsp.sao_band_filter(dst, src, stride,  sao[class_index], edges, width, height, c_idx, classes[class_index]);
+                    sc->hevcdsp.sao_band_filter[ classes[class_index] ](dst, src, stride,  sao[class_index], edges, width, height, c_idx);
                     
                     break;
                 case SAO_EDGE: {
-                    sc->hevcdsp.sao_edge_filter(dst, src, stride, sao[class_index],  edges, width, height, c_idx, classes[class_index]);
+                    sc->hevcdsp.sao_edge_filter[ classes[class_index] ](dst, src, stride, sao[class_index],  edges, width, height, c_idx);
                     break;
                 }
             }
@@ -259,11 +260,7 @@ void ff_hevc_deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
     int tc[2];
     uint8_t no_p[2] = {0};
     uint8_t no_q[2] = {0};
-    //int pixel = 1 + !!(sc->sps->bit_depth - 8); // sizeof(pixel)
 
-    //int pic_width_in_min_pu = sc->sps->pic_width_in_min_cbs * 4;
-    //int min_pu_size = 1 << sc->sps->log2_min_pu_size;
-    //int log2_min_pu_size = sc->sps->log2_min_pu_size;
     int log2_ctb_size =  sc->sps->log2_ctb_size;
     int x_end, y_end;
     int ctb_size = 1<<log2_ctb_size;
@@ -481,7 +478,8 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
     HEVCSharedContext *sc = s->HEVCsc; 
     int log2_min_pu_size = sc->sps->log2_min_pu_size;
     int min_pu_size = 1 << sc->sps->log2_min_pu_size;
-    int pic_width_in_min_pu = sc->sps->pic_width_in_min_cbs * 4;
+
+    int pic_width_in_min_pu = s->HEVCsc->sps->pic_width_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
     int i, j;
     int bs;
     MvField *tab_mvf = sc->ref->tab_mvf;
@@ -584,3 +582,36 @@ void hls_filters(HEVCContext *s, int x_ctb, int y_ctb, int ctb_size)
             hls_filter(s, x_ctb-ctb_size, y_ctb);
     }
 }
+static int is_border(PPS *pps, int x, int y, int ctb_size)	{
+	int i, offset;
+	for(offset = 0, i = 0; i < pps->num_tile_columns-1; i++ ) {
+		offset += pps->column_width[i];
+		if (x == (offset*ctb_size) || x ==((offset-1)*ctb_size)) {
+			return 1;
+		}
+	}
+	for(offset = 0, i = 0; i < pps->num_tile_rows-1; i++ )	{
+		offset += pps->row_height[i];
+		if (y == (offset*ctb_size) || y == ((offset-1)*ctb_size)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+void hls_filters_tiles(HEVCContext *s, int x_ctb, int y_ctb, int ctb_size)
+{
+    if(y_ctb && x_ctb) {
+		if(!is_border(s->HEVCsc->pps, x_ctb-ctb_size, y_ctb-ctb_size, ctb_size))
+        	hls_filter(s, x_ctb-ctb_size, y_ctb-ctb_size);
+        if(x_ctb >= (s->HEVCsc->sps->pic_width_in_luma_samples - ctb_size))
+			if(!is_border(s->HEVCsc->pps, x_ctb, y_ctb-ctb_size, ctb_size))
+            	hls_filter(s, x_ctb, y_ctb-ctb_size);
+        if(y_ctb >= (s->HEVCsc->sps->pic_height_in_luma_samples - ctb_size))
+			if(!is_border(s->HEVCsc->pps, x_ctb-ctb_size, y_ctb, ctb_size))
+            	hls_filter(s, x_ctb-ctb_size, y_ctb);
+    }
+}
+
+
+

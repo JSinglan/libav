@@ -28,17 +28,33 @@
 
 static void FUNC(intra_pred)(HEVCContext *s, int x0, int y0, int log2_size, int c_idx)
 {
-#define MIN_TB_ADDR_ZS(x, y)                                            \
+#define IS_INTRA(x, y) (sc->ref->tab_mvf[((x0+((x)<<hshift)) >> sc->sps->log2_min_pu_size) + (((y0+((y)<<vshift))>> sc->sps->log2_min_pu_size) * pic_width_in_min_pu)].is_intra || !sc->pps->constrained_intra_pred_flag)
+#define MIN_TB_ADDR_ZS(x, y)                            \
     sc->pps->min_tb_addr_zs[(y) * sc->sps->pic_width_in_min_tbs + (x)]
-
-#define EXTEND_LEFT(ptr, length)                \
-    for (i = 0; i < (length); i++)              \
-        (ptr)[-(i+1)] = (ptr)[0];
-#define EXTEND_RIGHT(ptr, length)               \
-    for (i = 0; i < (length); i++)              \
-        (ptr)[i+1] = (ptr)[0];
-#define EXTEND_UP(ptr, length) EXTEND_LEFT(ptr, length)
-#define EXTEND_DOWN(ptr, length) EXTEND_RIGHT(ptr, length)
+#define EXTEND_LEFT(ptr, start, length)                 \
+        for (i = (start); i > (start)-(length); i--)    \
+            ptr[i-1] = ptr[i]
+#define EXTEND_RIGHT(ptr, start, length)                \
+        for (i = (start); i < (start)+(length); i++)    \
+            ptr[i] = ptr[i-1]
+#define EXTEND_UP(ptr, start, length)   EXTEND_LEFT(ptr, start, length)
+#define EXTEND_DOWN(ptr, start, length) EXTEND_RIGHT(ptr, start, length)
+#define EXTEND_LEFT_CIP(ptr, start, length)             \
+        for (i = (start); i > (start)-(length); i--)    \
+            if (!IS_INTRA(i-1, -1))                     \
+                ptr[i-1] = ptr[i]
+#define EXTEND_RIGHT_CIP(ptr, start, length)            \
+        for (i = (start); i < (start)+(length); i++)    \
+            if (!IS_INTRA(i, -1))                       \
+                ptr[i] = ptr[i-1]
+#define EXTEND_UP_CIP(ptr, start, length)               \
+        for (i = (start); i > (start)-(length); i--)    \
+            if (!IS_INTRA(-1, i-1))                     \
+                ptr[i-1] = ptr[i]
+#define EXTEND_DOWN_CIP(ptr, start, length)             \
+        for (i = (start); i < (start)+(length); i++)    \
+            if (!IS_INTRA(-1, i))                       \
+            ptr[i] = ptr[i-1]
     HEVCSharedContext *sc = s->HEVCsc;
     HEVCLocalContext *lc = s->HEVClc;
     int i;
@@ -55,6 +71,8 @@ static void FUNC(intra_pred)(HEVCContext *s, int x0, int y0, int log2_size, int 
 
     ptrdiff_t stride = sc->frame->linesize[c_idx] / sizeof(pixel);
     pixel *src = (pixel*)sc->frame->data[c_idx] + x + y * stride;
+
+    int pic_width_in_min_pu = s->HEVCsc->sps->pic_width_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
 
     enum IntraPredMode mode = c_idx ? lc->pu.intra_pred_mode_c :
                               lc->tu.cur_intra_pred_mode;
@@ -86,99 +104,144 @@ static void FUNC(intra_pred)(HEVCContext *s, int x0, int y0, int log2_size, int 
                             (y0 + size_in_luma)) >> vshift;
     int top_right_size = (FFMIN(x0 + 2*size_in_luma, sc->sps->pic_width_in_luma_samples) -
                           (x0 + size_in_luma)) >> hshift;
+
     if (sc->pps->constrained_intra_pred_flag == 1) {
-        int min_pu_size = sc->sps->log2_min_pu_size; 
-        int pic_width_in_min_pu  = sc->sps->pic_width_in_min_cbs * 4;
-        int x_pu         = x0     >> min_pu_size;
-        int y_pu         = y0     >> min_pu_size;
-        int x0_left_pu   = (x0-1) >> min_pu_size;
-        int y0_top_pu    = (y0-1) >> min_pu_size;
-        int x0_right_pu  = (x0+1) >> min_pu_size;
-        int y0_bottom_pu = (y0+1) >> min_pu_size;
-        int x_left_pu    = x0b == 0 ? x_pu - (size_in_luma >> sc->sps->log2_min_pu_size) : x0_left_pu;
-        int y_top_pu     = y0b == 0 ? y_pu - (size_in_luma >> sc->sps->log2_min_pu_size) : y0_top_pu;
-        int x_right_pu   = x0b + size_in_luma >= (1 << sc->sps->log2_ctb_size) ? x_pu + (size_in_luma >> sc->sps->log2_min_pu_size) : x0_right_pu;
-        int y_bottom_pu  = y0b + size_in_luma >= (1 << sc->sps->log2_ctb_size) ? y_pu + (size_in_luma >> sc->sps->log2_min_pu_size) : y0_bottom_pu;
-        if (bottom_left_available == 1)
-            bottom_left_available = sc->ref->tab_mvf[x_left_pu + y_bottom_pu * pic_width_in_min_pu].is_intra;
-        if (left_available == 1)
-            left_available = sc->ref->tab_mvf[x_left_pu + y_pu * pic_width_in_min_pu].is_intra;
+        int x_left_pu   = (x0-1) >> sc->sps->log2_min_pu_size;
+        int y_left_pu   = (y0  ) >> sc->sps->log2_min_pu_size;
+        int x_top_pu    = (x0  ) >> sc->sps->log2_min_pu_size;
+        int y_top_pu    = (y0-1) >> sc->sps->log2_min_pu_size;
+        int x_right_pu  = (x0+size_in_luma) >> sc->sps->log2_min_pu_size;
+        int y_bottom_pu = (y0+size_in_luma) >> sc->sps->log2_min_pu_size;
+        if (bottom_left_available == 1) {
+            bottom_left_available = 0;
+            for(i=0; i< (size_in_luma>>2); i++)
+                bottom_left_available |= sc->ref->tab_mvf[x_left_pu + (y_bottom_pu+i) * pic_width_in_min_pu].is_intra;
+        }
+        if (left_available == 1) {
+            left_available = 0;
+            for(i=0; i< (size_in_luma>>2); i++)
+                left_available |= sc->ref->tab_mvf[x_left_pu + (y_left_pu+i) * pic_width_in_min_pu].is_intra;
+        }
         if (top_left_available == 1)
             top_left_available = sc->ref->tab_mvf[x_left_pu + y_top_pu * pic_width_in_min_pu].is_intra;
-        if (top_available == 1)
-            top_available = sc->ref->tab_mvf[x_pu + y_top_pu * pic_width_in_min_pu].is_intra;
-        if (top_right_available == 1)
-            top_right_available = sc->ref->tab_mvf[x_right_pu + y_top_pu * pic_width_in_min_pu].is_intra;
+        if (top_available == 1) {
+            top_available = 0;
+            for(i=0; i< (size_in_luma>>2); i++)
+                top_available |= sc->ref->tab_mvf[(x_top_pu+i) + y_top_pu * pic_width_in_min_pu].is_intra;
+        }
+        if (top_right_available == 1) {
+            top_right_available = 0;
+            for(i=0; i< (size_in_luma>>2); i++)
+                top_right_available |= sc->ref->tab_mvf[(x_right_pu+i) + y_top_pu * pic_width_in_min_pu].is_intra;
+        }
+        for (i = 0; i < 2*MAX_TB_SIZE+1; i++) {
+            left[i] = 128;
+            top[i]  = 128;
+        }
     }
-
-    // Fill left and top with the available samples
     if (bottom_left_available) {
-        for (i = 0; i < bottom_left_size; i++) {
-            left[size + i] = POS(-1, size + i);
-        }
-        for (; i < size; i++) {
-            left[size + i] = POS(-1, size + bottom_left_size - 1);
-        }
+        for (i = size + bottom_left_size; i < (size<<1); i++)
+            if (IS_INTRA(-1, size + bottom_left_size - 1))
+                left[i] = POS(-1, size + bottom_left_size - 1);
+        for (i = size + bottom_left_size - 1; i >= size; i--)
+            if (IS_INTRA(-1, i))
+                left[i] = POS(-1, i);
     }
-    if (left_available) {
-        for (i = 0; i < size; i++)
-            left[i] = POS(-1, i);
-    }
+    if (left_available)
+        for (i = size - 1; i >= 0; i--)
+            if (IS_INTRA(-1, i))
+                left[i] = POS(-1, i);
     if (top_left_available)
-        left[-1] = POS(-1, -1);
-    if (top_available && top_right_available && top_right_size == size) {
-        memcpy(&top[0], &POS(0, -1), size * sizeof(pixel));
-        memcpy(&top[size], &POS(size, -1), top_right_size * sizeof(pixel));
-    } else {
-        if (top_available)
-            memcpy(&top[0], &POS(0, -1), size * sizeof(pixel));
-        if (top_right_available) {
-            memcpy(&top[size], &POS(size, -1), top_right_size * sizeof(pixel));
-            for (i = top_right_size; i < size; i++)
-                top[size + i] = POS(size + top_right_size - 1, -1);
+        if (IS_INTRA(-1, -1)) {
+            left[-1] = POS(-1, -1);
+            top[-1]  = left[-1];
+        }
+    if (top_available)
+        for (i = size-1; i >= 0; i--)
+            if (IS_INTRA(i, -1))
+                top[i] = POS(i, -1);
+    if (top_right_available) {
+        for (i = size+top_right_size; i < (size<<1); i++)
+            if (IS_INTRA(size + top_right_size - 1, -1))
+                top[i] = POS(size + top_right_size - 1, -1);
+        for (i = size+top_right_size-1; i >= size; i--)
+            if (IS_INTRA(i, -1))
+                top[i] = POS(i, -1);
+   }
+
+    if (sc->pps->constrained_intra_pred_flag == 1) {
+        if (bottom_left_available || left_available || top_left_available || top_available || top_right_available) {
+            i = size + (bottom_left_available? bottom_left_size: 0) -1;
+            while(i>-1 && !IS_INTRA(-1, i)) i--;
+            if (!IS_INTRA(-1, i)) {
+                i = 0;
+                while(i<2*size && !IS_INTRA(i, -1)) i++;
+                EXTEND_LEFT_CIP(top, i, i+1);
+                left[-1] = top[-1];
+                i = 0;
+            }
+            EXTEND_DOWN_CIP(left, i, 2*size-i);
+            if (!bottom_left_available) {
+                EXTEND_DOWN(left, size, size);
+            }
+            if (y0 != 0) {
+                EXTEND_UP_CIP(left, 2*size-1, 2*size);
+            } else {
+                EXTEND_UP_CIP(left, 2*size-1, 2*size-1);
+            }
+            top[-1] = left[-1];
+            if (y0 != 0) {
+                EXTEND_RIGHT_CIP(top, 0, 2*size);
+            }
         }
     }
     // Infer the unavailable samples
     if (!bottom_left_available) {
         if (left_available) {
-            EXTEND_DOWN(&left[size-1], size);
+            EXTEND_DOWN(left, size, size);
         } else if (top_left_available) {
-            EXTEND_DOWN(&left[-1], 2*size);
+            EXTEND_DOWN(left, 0, 2*size);
             left_available = 1;
         } else if (top_available) {
             left[-1] = top[0];
-            EXTEND_DOWN(&left[-1], 2*size);
+            EXTEND_DOWN(left, 0, 2*size);
             top_left_available = 1;
             left_available = 1;
         } else if (top_right_available) {
-            EXTEND_LEFT(&top[size], size);
+            EXTEND_LEFT(top, size, size);
             left[-1] = top[0];
-            EXTEND_DOWN(&left[-1], 2*size);
+            EXTEND_DOWN(left ,0 , 2*size);
             top_available = 1;
             top_left_available = 1;
             left_available = 1;
         } else { // No samples available
             top[0] = left[-1] = (1 << (BIT_DEPTH - 1));
-            EXTEND_RIGHT(&top[0], 2*size-1);
-            EXTEND_DOWN(&left[-1], 2*size);
+            EXTEND_RIGHT(top, 1, 2*size-1);
+            EXTEND_DOWN(left, 0, 2*size);
         }
     }
 
     if (!left_available) {
-        EXTEND_UP(&left[size], size);
+        EXTEND_UP(left, size, size);
     }
     if (!top_left_available) {
         left[-1] = left[0];
     }
     if (!top_available) {
         top[0] = left[-1];
-        EXTEND_RIGHT(&top[0], size-1);
+        EXTEND_RIGHT(top, 1, size-1);
     }
-    if (!top_right_available)
-        EXTEND_RIGHT(&top[size-1], size);
+    if (!top_right_available) {
+        EXTEND_RIGHT(top, size, size);
+    }
 
     top[-1] = left[-1];
 
+#undef EXTEND_LEFT_CIP
+#undef EXTEND_RIGHT_CIP
+#undef EXTEND_UP_CIP
+#undef EXTEND_DOWN_CIP
+#undef IS_INTRA
 #undef EXTEND_LEFT
 #undef EXTEND_RIGHT
 #undef EXTEND_UP
@@ -222,32 +285,72 @@ static void FUNC(intra_pred)(HEVCContext *s, int x0, int y0, int log2_size, int 
 
     switch(mode) {
     case INTRA_PLANAR:
-        sc->hpc.pred_planar((uint8_t*)src, (uint8_t*)top, (uint8_t*)left, stride, log2_size);
+        sc->hpc.pred_planar[log2_size -2]((uint8_t*)src, (uint8_t*)top, (uint8_t*)left, stride);
         break;
     case INTRA_DC:
         sc->hpc.pred_dc((uint8_t*)src, (uint8_t*)top, (uint8_t*)left, stride, log2_size, c_idx);
         break;
     default:
-        sc->hpc.pred_angular((uint8_t*)src, (uint8_t*)top, (uint8_t*)left, stride, log2_size, c_idx,
-                            mode);
+        sc->hpc.pred_angular[log2_size - 2]((uint8_t*)src, (uint8_t*)top, (uint8_t*)left, stride, c_idx, mode);
         break;
     }
 
 }
 
-static void FUNC(pred_planar)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
-                               ptrdiff_t stride, int log2_size)
+static void FUNC(pred_planar_0)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
+                               ptrdiff_t stride)
 {
     int x, y;
-    int size = (1 << log2_size);
     pixel *src = (pixel*)_src;
     const pixel *top = (const pixel*)_top;
     const pixel *left = (const pixel*)_left;
-    for (y = 0; y < size; y++)
-        for (x = 0; x < size; x++)
-            POS(x, y) = ((size - 1 - x) * left[y]  + (x + 1) * top[size] +
-                         (size - 1 - y) * top[x] + (y + 1) * left[size] + size) >>
-                        (log2_size + 1);
+    for (y = 0; y < 4; y++)
+        for (x = 0; x < 4; x++)
+            POS(x, y) = ((3 - x) * left[y]  + (x + 1) * top[4] +
+                         (3 - y) * top[x] + (y + 1) * left[4] + 4) >>
+                        (3);
+}
+
+static void FUNC(pred_planar_1)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
+                               ptrdiff_t stride)
+{
+    int x, y;
+    pixel *src = (pixel*)_src;
+    const pixel *top = (const pixel*)_top;
+    const pixel *left = (const pixel*)_left;
+    for (y = 0; y < 8; y++)
+        for (x = 0; x < 8; x++)
+            POS(x, y) = ((7 - x) * left[y]  + (x + 1) * top[8] +
+                         (7 - y) * top[x] + (y + 1) * left[8] + 8) >>
+                        (4);
+}
+
+static void FUNC(pred_planar_2)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
+                               ptrdiff_t stride)
+{
+    int x, y;
+    pixel *src = (pixel*)_src;
+    const pixel *top = (const pixel*)_top;
+    const pixel *left = (const pixel*)_left;
+    for (y = 0; y < 16; y++)
+        for (x = 0; x < 16; x++)
+            POS(x, y) = ((15 - x) * left[y]  + (x + 1) * top[16] +
+                         (15 - y) * top[x] + (y + 1) * left[16] + 16) >>
+                        (5);
+}
+
+static void FUNC(pred_planar_3)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
+                               ptrdiff_t stride)
+{
+    int x, y;
+    pixel *src = (pixel*)_src;
+    const pixel *top = (const pixel*)_top;
+    const pixel *left = (const pixel*)_left;
+    for (y = 0; y < 32; y++)
+        for (x = 0; x < 32; x++)
+            POS(x, y) = ((31 - x) * left[y]  + (x + 1) * top[32] +
+                         (31 - y) * top[x] + (y + 1) * left[32] + 32) >>
+                        (6);
 }
 
 static void FUNC(pred_dc)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
@@ -280,11 +383,11 @@ static void FUNC(pred_dc)(uint8_t *_src, const uint8_t *_top, const uint8_t *_le
     }
 }
 
-static void FUNC(pred_angular)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
-                                ptrdiff_t stride, int log2_size, int c_idx, int mode)
+static void FUNC(pred_angular_0)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
+                                ptrdiff_t stride, int c_idx, int mode)
 {
     int x, y;
-    int size = 1 << log2_size;
+    int size = 1 << 2;
     pixel *src = (pixel*)_src;
     const pixel *top = (const pixel*)_top;
     const pixel *left = (const pixel*)_left;
@@ -359,5 +462,241 @@ static void FUNC(pred_angular)(uint8_t *_src, const uint8_t *_top, const uint8_t
         }
     }
 }
+static void FUNC(pred_angular_1)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
+                                ptrdiff_t stride, int c_idx, int mode)
+{
+    int x, y;
+    int size = 1 << 3;
+    pixel *src = (pixel*)_src;
+    const pixel *top = (const pixel*)_top;
+    const pixel *left = (const pixel*)_left;
 
+    const int intra_pred_angle[] = {
+        32, 26, 21, 17, 13, 9, 5, 2, 0, -2, -5, -9, -13, -17, -21, -26, -32,
+        -26, -21, -17, -13, -9, -5, -2, 0, 2, 5, 9, 13, 17, 21, 26, 32
+    };
+    const int inv_angle[] = {
+        -4096, -1638, -910, -630, -482, -390, -315, -256, -315, -390, -482,
+        -630, -910, -1638, -4096
+    };
+
+    int angle = intra_pred_angle[mode-2];
+    pixel ref_array[3*MAX_TB_SIZE+1];
+    const pixel *ref;
+    int last = (size * angle) >> 5;
+
+    if (mode >= 18) {
+        ref = top - 1;
+        if (angle < 0 && last < -1) {
+            for (x = 0; x <= size; x++)
+                (ref_array + size)[x] = top[x - 1];
+            for (x = last; x <= -1; x++)
+                (ref_array + size)[x] = left[-1 + ((x * inv_angle[mode-11] + 128) >> 8)];
+            ref = ref_array + size;
+        }
+
+        for (y = 0; y < size; y++) {
+            int idx = ((y + 1) * angle) >> 5;
+            int fact = ((y + 1) * angle) & 31;
+            if (fact) {
+                for (x = 0; x < size; x++) {
+                    POS(x, y) = ((32 - fact) * ref[x + idx + 1] + fact * ref[x + idx + 2] + 16) >> 5;
+                }
+            } else {
+                for (x = 0; x < size; x++) {
+                    POS(x, y) = ref[x + idx + 1];
+                }
+            }
+        }
+        if (mode == 26 && c_idx == 0 && size < 32) {
+            for (y = 0; y < size; y++)
+                POS(0, y) = av_clip_pixel(top[0] + ((left[y] - left[-1]) >> 1));
+        }
+    } else {
+        ref = left - 1;
+        if (angle < 0 && last < -1) {
+            for (x = 0; x <= size; x++)
+                (ref_array + size)[x] = left[x - 1];
+            for (x = last; x <= -1; x++)
+                (ref_array + size)[x] = top[-1 + ((x * inv_angle[mode-11] + 128) >> 8)];
+            ref = ref_array + size;
+        }
+
+        for (x = 0; x < size; x++) {
+            int idx = ((x + 1) * angle) >> 5;
+            int fact = ((x + 1) * angle) & 31;
+            if (fact) {
+                for (y = 0; y < size; y++) {
+                    POS(x, y) = ((32 - fact) * ref[y + idx + 1] + fact * ref[y + idx + 2] + 16) >> 5;
+                }
+            } else {
+                for (y = 0; y < size; y++) {
+                    POS(x, y) = ref[y + idx + 1];
+                }
+            }
+        }
+        if (mode == 10 && c_idx == 0 && size < 32) {
+            for (x = 0; x < size; x++)
+                POS(x, 0) = av_clip_pixel(left[0] + ((top[x] - top[-1]) >> 1));
+        }
+    }
+}
+static void FUNC(pred_angular_2)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
+                                ptrdiff_t stride, int c_idx, int mode)
+{
+    int x, y;
+    int size = 1 << 4;
+    pixel *src = (pixel*)_src;
+    const pixel *top = (const pixel*)_top;
+    const pixel *left = (const pixel*)_left;
+
+    const int intra_pred_angle[] = {
+        32, 26, 21, 17, 13, 9, 5, 2, 0, -2, -5, -9, -13, -17, -21, -26, -32,
+        -26, -21, -17, -13, -9, -5, -2, 0, 2, 5, 9, 13, 17, 21, 26, 32
+    };
+    const int inv_angle[] = {
+        -4096, -1638, -910, -630, -482, -390, -315, -256, -315, -390, -482,
+        -630, -910, -1638, -4096
+    };
+
+    int angle = intra_pred_angle[mode-2];
+    pixel ref_array[3*MAX_TB_SIZE+1];
+    const pixel *ref;
+    int last = (size * angle) >> 5;
+
+    if (mode >= 18) {
+        ref = top - 1;
+        if (angle < 0 && last < -1) {
+            for (x = 0; x <= size; x++)
+                (ref_array + size)[x] = top[x - 1];
+            for (x = last; x <= -1; x++)
+                (ref_array + size)[x] = left[-1 + ((x * inv_angle[mode-11] + 128) >> 8)];
+            ref = ref_array + size;
+        }
+
+        for (y = 0; y < size; y++) {
+            int idx = ((y + 1) * angle) >> 5;
+            int fact = ((y + 1) * angle) & 31;
+            if (fact) {
+                for (x = 0; x < size; x++) {
+                    POS(x, y) = ((32 - fact) * ref[x + idx + 1] + fact * ref[x + idx + 2] + 16) >> 5;
+                }
+            } else {
+                for (x = 0; x < size; x++) {
+                    POS(x, y) = ref[x + idx + 1];
+                }
+            }
+        }
+        if (mode == 26 && c_idx == 0 && size < 32) {
+            for (y = 0; y < size; y++)
+                POS(0, y) = av_clip_pixel(top[0] + ((left[y] - left[-1]) >> 1));
+        }
+    } else {
+        ref = left - 1;
+        if (angle < 0 && last < -1) {
+            for (x = 0; x <= size; x++)
+                (ref_array + size)[x] = left[x - 1];
+            for (x = last; x <= -1; x++)
+                (ref_array + size)[x] = top[-1 + ((x * inv_angle[mode-11] + 128) >> 8)];
+            ref = ref_array + size;
+        }
+
+        for (x = 0; x < size; x++) {
+            int idx = ((x + 1) * angle) >> 5;
+            int fact = ((x + 1) * angle) & 31;
+            if (fact) {
+                for (y = 0; y < size; y++) {
+                    POS(x, y) = ((32 - fact) * ref[y + idx + 1] + fact * ref[y + idx + 2] + 16) >> 5;
+                }
+            } else {
+                for (y = 0; y < size; y++) {
+                    POS(x, y) = ref[y + idx + 1];
+                }
+            }
+        }
+        if (mode == 10 && c_idx == 0 && size < 32) {
+            for (x = 0; x < size; x++)
+                POS(x, 0) = av_clip_pixel(left[0] + ((top[x] - top[-1]) >> 1));
+        }
+    }
+}
+static void FUNC(pred_angular_3)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
+                                ptrdiff_t stride, int c_idx, int mode)
+{
+    int x, y;
+    int size = 1 << 5;
+    pixel *src = (pixel*)_src;
+    const pixel *top = (const pixel*)_top;
+    const pixel *left = (const pixel*)_left;
+
+    const int intra_pred_angle[] = {
+        32, 26, 21, 17, 13, 9, 5, 2, 0, -2, -5, -9, -13, -17, -21, -26, -32,
+        -26, -21, -17, -13, -9, -5, -2, 0, 2, 5, 9, 13, 17, 21, 26, 32
+    };
+    const int inv_angle[] = {
+        -4096, -1638, -910, -630, -482, -390, -315, -256, -315, -390, -482,
+        -630, -910, -1638, -4096
+    };
+
+    int angle = intra_pred_angle[mode-2];
+    pixel ref_array[3*MAX_TB_SIZE+1];
+    const pixel *ref;
+    int last = (size * angle) >> 5;
+
+    if (mode >= 18) {
+        ref = top - 1;
+        if (angle < 0 && last < -1) {
+            for (x = 0; x <= size; x++)
+                (ref_array + size)[x] = top[x - 1];
+            for (x = last; x <= -1; x++)
+                (ref_array + size)[x] = left[-1 + ((x * inv_angle[mode-11] + 128) >> 8)];
+            ref = ref_array + size;
+        }
+
+        for (y = 0; y < size; y++) {
+            int idx = ((y + 1) * angle) >> 5;
+            int fact = ((y + 1) * angle) & 31;
+            if (fact) {
+                for (x = 0; x < size; x++) {
+                    POS(x, y) = ((32 - fact) * ref[x + idx + 1] + fact * ref[x + idx + 2] + 16) >> 5;
+                }
+            } else {
+                for (x = 0; x < size; x++) {
+                    POS(x, y) = ref[x + idx + 1];
+                }
+            }
+        }
+        if (mode == 26 && c_idx == 0 && size < 32) {
+            for (y = 0; y < size; y++)
+                POS(0, y) = av_clip_pixel(top[0] + ((left[y] - left[-1]) >> 1));
+        }
+    } else {
+        ref = left - 1;
+        if (angle < 0 && last < -1) {
+            for (x = 0; x <= size; x++)
+                (ref_array + size)[x] = left[x - 1];
+            for (x = last; x <= -1; x++)
+                (ref_array + size)[x] = top[-1 + ((x * inv_angle[mode-11] + 128) >> 8)];
+            ref = ref_array + size;
+        }
+
+        for (x = 0; x < size; x++) {
+            int idx = ((x + 1) * angle) >> 5;
+            int fact = ((x + 1) * angle) & 31;
+            if (fact) {
+                for (y = 0; y < size; y++) {
+                    POS(x, y) = ((32 - fact) * ref[y + idx + 1] + fact * ref[y + idx + 2] + 16) >> 5;
+                }
+            } else {
+                for (y = 0; y < size; y++) {
+                    POS(x, y) = ref[y + idx + 1];
+                }
+            }
+        }
+        if (mode == 10 && c_idx == 0 && size < 32) {
+            for (x = 0; x < size; x++)
+                POS(x, 0) = av_clip_pixel(left[0] + ((top[x] - top[-1]) >> 1));
+        }
+    }
+}
 #undef POS

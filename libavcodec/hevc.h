@@ -33,10 +33,6 @@
 
 #define MAX_DPB_SIZE 16 // A.4.1
 #define MAX_NB_THREADS 16
-//#define DEBLOCKING_IN_LOOP
-#ifdef DEBLOCKING_IN_LOOP
-#define SAO_IN_LOOP
-#endif
 
 /**
  * Value of the luma sample at position (x, y) in the 2D array tab.
@@ -413,6 +409,7 @@ typedef struct PPS {
     int *ctb_addr_rs_to_ts; ///< CtbAddrRSToTS
     int *ctb_addr_ts_to_rs; ///< CtbAddrTSToRS
     int *tile_id; ///< TileId
+    int *tile_pos_rs; ///< TilePosRS
     int *min_cb_addr_zs; ///< MinCbAddrZS
     int *min_tb_addr_zs; ///< MinTbAddrZS
 } PPS;
@@ -719,6 +716,11 @@ typedef struct HEVCFrame {
      */
     uint16_t sequence;
 } HEVCFrame;
+typedef struct Filter_data{
+	int x;
+	int y;
+	int size;
+}Filter_data;
 
 typedef struct HEVCLocalContext {
     uint8_t *cabac_state;
@@ -746,7 +748,9 @@ typedef struct HEVCLocalContext {
     CodingTree ct;
     CodingUnit cu;
     PredictionUnit pu;
-
+    int16_t* BufferMC;
+    Filter_data *save_boundary_strengths;
+    int nb_saved;
 } HEVCLocalContext;
 
 typedef struct HEVCSharedContext {
@@ -776,6 +780,7 @@ typedef struct HEVCSharedContext {
     int bs_height;
     
     uint8_t md5[3][16];
+    uint8_t is_md5;
     int * ctb_entry_count;
     int coding_tree_count;
     int is_decoded;
@@ -793,11 +798,9 @@ typedef struct HEVCSharedContext {
     
     //  CU
     uint8_t *skip_flag;
-    uint8_t *top_ct_depth;
-    uint8_t *left_ct_depth;
+    uint8_t *tab_ct_depth;
     // PU
-    uint8_t *top_ipm;
-    uint8_t *left_ipm;
+    uint8_t *tab_ipm;
     
     
     uint8_t *cbf_luma; // cbf_luma of colocated TU
@@ -813,10 +816,13 @@ typedef struct HEVCSharedContext {
     int skipped_bytes;
     int *skipped_bytes_pos;
     int skipped_bytes_pos_size;
+    uint8_t *data;
 
     uint8_t *rbsp_buffer;
     int rbsp_buffer_size;
 
+    int enable_parallel_tiles;
+    int nuh_layer_id;
     int ERROR;
 
 } HEVCSharedContext;
@@ -834,6 +840,7 @@ typedef struct HEVCContext {
     
     uint8_t             threads_number;
     int                 decode_checksum_sei;
+    int                 disable_au;
 } HEVCContext;
 
 enum ScanType {
@@ -854,7 +861,7 @@ int ff_hevc_add_ref(HEVCContext *s, AVFrame *frame, int poc);
 void ff_hevc_compute_poc(HEVCContext *s, int poc_lsb);
 void ff_hevc_set_ref_poc_list(HEVCContext *s);
 
-void save_states(HEVCContext *s, int ctb_addr_ts);
+void ff_hevc_save_states(HEVCContext *s, int ctb_addr_ts);
 void ff_hevc_cabac_init(HEVCContext *s, int ctb_addr_ts);
 int ff_hevc_sao_merge_flag_decode(HEVCContext *s);
 int ff_hevc_sao_type_idx_decode(HEVCContext *s);

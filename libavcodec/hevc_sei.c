@@ -25,7 +25,6 @@
 #include "hevc.h"
 #include "golomb.h"
 
-
 static void decode_nal_sei_decoded_picture_hash(HEVCContext *s, int payload_size)
 {
     int cIdx, i;
@@ -33,13 +32,15 @@ static void decode_nal_sei_decoded_picture_hash(HEVCContext *s, int payload_size
     uint16_t picture_crc;
     uint32_t picture_checksum;
     GetBitContext *gb = s->HEVClc->gb;
+    HEVCSharedContext *sc = s->HEVCsc;
     hash_type = get_bits(gb, 8);
 
 
     for( cIdx = 0; cIdx < 3/*((s->sps->chroma_format_idc == 0) ? 1 : 3)*/; cIdx++ ) {
         if ( hash_type == 0 ) {
+            s->HEVCsc->is_md5 = 1;
             for( i = 0; i < 16; i++) {
-                s->HEVCsc->md5[cIdx][i] = get_bits(gb, 8);
+                sc->md5[cIdx][i] = get_bits(gb, 8);
             }
         } else if( hash_type == 1 ) {
             picture_crc = get_bits(gb, 16);

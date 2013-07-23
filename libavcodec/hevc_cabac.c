@@ -79,7 +79,8 @@ static const int8_t num_bins_in_se[] = {
 /**
  * Offset to ctxIdx 0 in init_values and states, indexed by SyntaxElement.
  */
-static const int elem_offset[sizeof(num_bins_in_se)] ={ 0,
+static const int elem_offset[sizeof(num_bins_in_se)] = {
+    0,
     1,
     2,
     2,
@@ -325,7 +326,7 @@ static const uint8_t init_values[3][HEVC_CONTEXTS] = {
     },
 };
 
-void save_states(HEVCContext *s, int ctb_addr_ts)
+void ff_hevc_save_states(HEVCContext *s, int ctb_addr_ts)
 {
     if (s->HEVCsc->pps->entropy_coding_sync_enabled_flag && (
             (ctb_addr_ts % s->HEVCsc->sps->pic_width_in_ctbs) == 2 ||
@@ -359,7 +360,6 @@ static void cabac_init_state(HEVCContext *s)
     int i;
     HEVCSharedContext *sc = s->HEVCsc;
     int init_type = 2 - sc->sh.slice_type;
-    ff_init_cabac_states(s->HEVClc->cc);
     if (sc->sh.cabac_init_flag && sc->sh.slice_type != I_SLICE)
         init_type ^= 3;
 
@@ -526,10 +526,13 @@ int ff_hevc_split_coding_unit_flag_decode(HEVCContext *s, int ct_depth, int x0, 
     int inc = 0, depth_left = 0, depth_top = 0;
     int x0b = x0 & ((1 << sc->sps->log2_ctb_size) - 1);
     int y0b = y0 & ((1 << sc->sps->log2_ctb_size) - 1);
+    int x_cb = x0 >> sc->sps->log2_min_coding_block_size;
+    int y_cb = y0 >> sc->sps->log2_min_coding_block_size;
+
     if (s->HEVClc->ctb_left_flag || x0b)
-        depth_left = sc->left_ct_depth[y0 >> sc->sps->log2_min_coding_block_size];
+        depth_left = sc->tab_ct_depth[(y_cb)*sc->sps->pic_width_in_min_cbs + x_cb-1];
     if (s->HEVClc->ctb_up_flag || y0b)
-        depth_top = sc->top_ct_depth[x0 >> sc->sps->log2_min_coding_block_size];
+        depth_top = sc->tab_ct_depth[(y_cb-1)*sc->sps->pic_width_in_min_cbs + x_cb];
 
     inc += (depth_left > ct_depth);
     inc += (depth_top > ct_depth);
