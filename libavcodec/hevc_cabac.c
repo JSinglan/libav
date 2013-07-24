@@ -394,7 +394,10 @@ void ff_hevc_cabac_init(HEVCContext *s, int ctb_addr_ts)
         }
     } else {
         if (sc->pps->tiles_enabled_flag && (sc->pps->tile_id[ctb_addr_ts] != sc->pps->tile_id[ctb_addr_ts-1])) {
-            cabac_reinit(s->HEVClc);
+            if (s->threads_number==1)
+            	cabac_reinit(s->HEVClc);
+            else
+                cabac_init_decoder(s);
             cabac_init_state(s);
         }
         if (sc->pps->entropy_coding_sync_enabled_flag) {
@@ -855,7 +858,7 @@ int ff_hevc_coeff_abs_level_greater1_flag_decode(HEVCContext *s, int c_idx,
         inc += 16;
 
     s->HEVClc->last_coeff_abs_level_greater1_flag =
-        GET_CABAC( elem_offset[COEFF_ABS_LEVEL_GREATER1_FLAG] + inc);
+        GET_CABAC(elem_offset[COEFF_ABS_LEVEL_GREATER1_FLAG] + inc);
 
     if (s->HEVClc->last_coeff_abs_level_greater1_flag) {
         s->HEVClc->greater1_ctx = 0;
