@@ -582,23 +582,6 @@ void hls_filters(HEVCContext *s, int x_ctb, int y_ctb, int ctb_size)
             hls_filter(s, x_ctb-ctb_size, y_ctb);
     }
 }
-static int is_border(PPS *pps, int x, int y, int ctb_size)	{
-	int i, offset;
-	for(offset = 0, i = 0; i < pps->num_tile_columns-1; i++ ) {
-		offset += pps->column_width[i];
-		if (x == (offset*ctb_size) || x ==((offset-1)*ctb_size)) {
-			return 1;
-		}
-	}
-	for(offset = 0, i = 0; i < pps->num_tile_rows-1; i++ )	{
-		offset += pps->row_height[i];
-		if (y == (offset*ctb_size) || y == ((offset-1)*ctb_size)) {
-			return 1;
-		}
-	}
-	return 0;
-}
-
 
 
 

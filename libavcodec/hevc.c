@@ -1645,7 +1645,7 @@ static void intra_prediction_unit(HEVCContext *s, int x0, int y0, int log2_cb_si
 }
 static void intra_prediction_unit_default_value(HEVCContext *s, int x0, int y0, int log2_cb_size)
 {
-    int i, j, k;
+    int j, k;
     HEVCLocalContext *lc = s->HEVClc;
     HEVCSharedContext *sc = s->HEVCsc;
     int pb_size = 1 << log2_cb_size;
@@ -1716,7 +1716,7 @@ static int hls_coding_unit(HEVCContext *s, int x0, int y0, int log2_cb_size)
         		lc->nb_saved ++;
         	}
             if (sc->pps->transquant_bypass_enable_flag && lc->cu.cu_transquant_bypass_flag) {
-                set_deblocking_bypass(s, x, y, log2_cb_size);
+                set_deblocking_bypass(s, x0, y0, log2_cb_size);
 
             }
         }
@@ -1805,7 +1805,7 @@ static int hls_coding_unit(HEVCContext *s, int x0, int y0, int log2_cb_size)
                 		lc->nb_saved ++;
                 	}
                     if (sc->pps->transquant_bypass_enable_flag && lc->cu.cu_transquant_bypass_flag) {
-                        set_deblocking_bypass(s, x, y, log2_cb_size);
+                        set_deblocking_bypass(s, x0, y0, log2_cb_size);
                     }
                 }
             }
