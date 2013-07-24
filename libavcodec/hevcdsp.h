@@ -70,4 +70,5 @@ typedef struct HEVCDSPContext {
 
 void ff_hevc_dsp_init(HEVCDSPContext *hpc, int bit_depth, int pcm_enabled);
 void ff_hevcdsp_init_x86(HEVCDSPContext *c, const int bit_depth, int pcm_enabled);
+void ff_hevcdsp_init_arm(HEVCDSPContext *c, const int bit_depth, int pcm_enabled);
 #endif /* AVCODEC_HEVCDSP_H */
