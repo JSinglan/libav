@@ -21,6 +21,8 @@ OBJS-$(CONFIG_H264PRED)                += arm/h264pred_init_arm.o
 OBJS-$(CONFIG_H264QPEL)                += arm/h264qpel_init_arm.o
 OBJS-$(CONFIG_HPELDSP)                 += arm/hpeldsp_init_arm.o        \
                                           arm/hpeldsp_arm.o
+OBJS-$(CONFIG_HEVC_DECODER)            += arm/hevcdsp_init_arm.o            \
+                                          arm/hevc_mc_neon.o
 OBJS-$(CONFIG_MPEGAUDIODSP)            += arm/mpegaudiodsp_init_arm.o
 OBJS-$(CONFIG_MPEGVIDEO)               += arm/mpegvideo_arm.o
 OBJS-$(CONFIG_VORBIS_DECODER)          += arm/vorbisdsp_init_arm.o

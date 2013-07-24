@@ -23,6 +23,8 @@
 #ifndef AVCODEC_HEVCDSP_H
 #define AVCODEC_HEVCDSP_H
 
+#include "get_bits.h"
+
 struct SAOParams;
 
 typedef struct HEVCDSPContext {
