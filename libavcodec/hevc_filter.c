@@ -294,10 +294,10 @@ void ff_hevc_deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
                 tc[0] = bs0 ? TC_CALC(qp0, bs0) : 0;
                 tc[1] = bs1 ? TC_CALC(qp1, bs1) : 0;
                 if (pcmf) {
-                        no_p[0] = get_pcm(s, x - 1, y);
-                        no_p[1] = get_pcm(s, x - 1, y + 8);
-                        no_q[0] = get_pcm(s, x, y);
-                        no_q[1] = get_pcm(s, x, y + 8);
+                    no_p[0] = get_pcm(s, x - 1, y);
+                    no_p[1] = get_pcm(s, x - 1, y + 4);
+                    no_q[0] = get_pcm(s, x, y);
+                    no_q[1] = get_pcm(s, x, y + 4);
                 }
                 src = &sc->frame->data[LUMA][y * sc->frame->linesize[LUMA] + x];
                 sc->hevcdsp.hevc_v_loop_filter_luma(src, sc->frame->linesize[LUMA], beta, tc, no_p, no_q);
@@ -314,10 +314,10 @@ void ff_hevc_deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
                     const int qp0 = (get_qPy(s, x - 1, y) + get_qPy(s, x, y) + 1) >> 1;
                     const int qp1 = (get_qPy(s, x - 1, y + 8) + get_qPy(s, x, y + 8) + 1) >> 1;
                     if (pcmf) {
-                            no_p[0] = get_pcm(s, x - 1, y);
-                            no_p[1] = get_pcm(s, x - 1, y + 8);
-                            no_q[0] = get_pcm(s, x, y);
-                            no_q[1] = get_pcm(s, x, y + 8);
+                        no_p[0] = get_pcm(s, x - 1, y);
+                        no_p[1] = get_pcm(s, x - 1, y + 8);
+                        no_q[0] = get_pcm(s, x, y);
+                        no_q[1] = get_pcm(s, x, y + 8);
                     }
                     c_tc[0] = (bs0 == 2) ? chroma_tc(sc, qp0, chroma, tc_offset) : 0;
                     c_tc[1] = (bs1 == 2) ? chroma_tc(sc, qp1, chroma, tc_offset) : 0;
@@ -342,10 +342,10 @@ void ff_hevc_deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
                 tc[0] = bs0 ? TC_CALC(qp0, bs0) : 0;
                 tc[1] = bs1 ? TC_CALC(qp1, bs1) : 0;
                 if (pcmf) {
-                        no_p[0] = get_pcm(s, x, y - 1);
-                        no_p[1] = get_pcm(s, x + 8, y - 1);
-                        no_q[0] = get_pcm(s, x, y);
-                        no_q[1] = get_pcm(s, x + 8, y);
+                    no_p[0] = get_pcm(s, x, y - 1);
+                    no_p[1] = get_pcm(s, x + 4, y - 1);
+                    no_q[0] = get_pcm(s, x, y);
+                    no_q[1] = get_pcm(s, x + 4, y);
                 }
 
                 src = &sc->frame->data[LUMA][y * sc->frame->linesize[LUMA] + x];
@@ -376,10 +376,10 @@ void ff_hevc_deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
                     const int qp0 = (bs0 == 2) ? ((get_qPy(s, x, y - 1) + get_qPy(s, x, y) + 1) >> 1) : 0;
                     const int qp1 = (bs1 == 2) ? (get_qPy(s, x + 8, y - 1) + get_qPy(s, x + 8, y) + 1) >> 1 : 0;
                     if (pcmf) {
-                            no_p[0] = get_pcm(s, x, y - 1);
-                            no_p[1] = get_pcm(s, x + 8, y - 1);
-                            no_q[0] = get_pcm(s, x, y);
-                            no_q[1] = get_pcm(s, x + 8, y);
+                        no_p[0] = get_pcm(s, x, y - 1);
+                        no_p[1] = get_pcm(s, x + 8, y - 1);
+                        no_q[0] = get_pcm(s, x, y);
+                        no_q[1] = get_pcm(s, x + 8, y);
                     }
 
                     c_tc[0] = (bs0 == 2) ? chroma_tc(sc, qp0, chroma, tc_offset) : 0;
@@ -395,6 +395,7 @@ void ff_hevc_deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
 
 static int boundary_strength(HEVCSharedContext *sc, MvField *curr, uint8_t curr_cbf_luma, MvField *neigh, uint8_t neigh_cbf_luma, int tu_border)
 {
+    int mvs = curr->pred_flag[0] + curr->pred_flag[1];
     if (tu_border) {
         if (curr->is_intra || neigh->is_intra)
             return 2;
@@ -402,78 +403,67 @@ static int boundary_strength(HEVCSharedContext *sc, MvField *curr, uint8_t curr_
             return 1;
     }
 
-    if (sc->sh.slice_type == P_SLICE) {
-        if (abs(neigh->mv[0].x - curr->mv[0].x) >= 4 || abs(neigh->mv[0].y - curr->mv[0].y) >= 4 ||
-            sc->ref->refPicList[0].list[neigh->ref_idx[0]] != sc->ref->refPicList[0].list[curr->ref_idx[0]])
-            return 1;
-        else
-            return 0;
-    } else if (sc->sh.slice_type == B_SLICE) {
-        int mvs = curr->pred_flag[0] + curr->pred_flag[1];
-        if (mvs == neigh->pred_flag[0] + neigh->pred_flag[1]) {
-            if (mvs == 2) {
-                // same L0 and L1
-                if (sc->ref->refPicList[0].list[curr->ref_idx[0]] == sc->ref->refPicList[0].list[neigh->ref_idx[0]]
-                    && sc->ref->refPicList[0].list[curr->ref_idx[0]] == sc->ref->refPicList[1].list[curr->ref_idx[1]]
-                    && sc->ref->refPicList[0].list[neigh->ref_idx[0]] == sc->ref->refPicList[1].list[neigh->ref_idx[1]]) {
-                    if ((abs(neigh->mv[0].x - curr->mv[0].x) >= 4 || abs(neigh->mv[0].y - curr->mv[0].y) >= 4 ||
-                        abs(neigh->mv[1].x - curr->mv[1].x) >= 4 || abs(neigh->mv[1].y - curr->mv[1].y) >= 4) &&
-                        (abs(neigh->mv[1].x - curr->mv[0].x) >= 4 || abs(neigh->mv[1].y - curr->mv[0].y) >= 4 ||
-                        abs(neigh->mv[0].x - curr->mv[1].x) >= 4 || abs(neigh->mv[0].y - curr->mv[1].y) >= 4))
-                        return 1;
-                    else
-                        return 0;
-                }
-                else if (sc->ref->refPicList[0].list[neigh->ref_idx[0]] == sc->ref->refPicList[0].list[curr->ref_idx[0]]
-                         && sc->ref->refPicList[1].list[neigh->ref_idx[1]] == sc->ref->refPicList[1].list[curr->ref_idx[1]]) {
-                    if (abs(neigh->mv[0].x - curr->mv[0].x) >= 4 || abs(neigh->mv[0].y - curr->mv[0].y) >= 4 ||
-                        abs(neigh->mv[1].x - curr->mv[1].x) >= 4 || abs(neigh->mv[1].y - curr->mv[1].y) >= 4)
-                        return 1;
-                    else
-                        return 0;
-                }
-                else if (sc->ref->refPicList[1].list[neigh->ref_idx[1]] == sc->ref->refPicList[0].list[curr->ref_idx[0]]
-                        && sc->ref->refPicList[0].list[neigh->ref_idx[0]] == sc->ref->refPicList[1].list[curr->ref_idx[1]]) {
-                    if (abs(neigh->mv[1].x - curr->mv[0].x) >= 4 || abs(neigh->mv[1].y - curr->mv[0].y) >= 4 ||
-                        abs(neigh->mv[0].x - curr->mv[1].x) >= 4 || abs(neigh->mv[0].y - curr->mv[1].y) >= 4)
-                        return 1;
-                    else
-                        return 0;
-                } else {
+    if (mvs == neigh->pred_flag[0] + neigh->pred_flag[1]) {
+        if (mvs == 2) {
+            // same L0 and L1
+            if (sc->ref->refPicList[0].list[curr->ref_idx[0]] == sc->ref->refPicList[0].list[neigh->ref_idx[0]]
+                && sc->ref->refPicList[0].list[curr->ref_idx[0]] == sc->ref->refPicList[1].list[curr->ref_idx[1]]
+                && sc->ref->refPicList[0].list[neigh->ref_idx[0]] == sc->ref->refPicList[1].list[neigh->ref_idx[1]]) {
+                if ((abs(neigh->mv[0].x - curr->mv[0].x) >= 4 || abs(neigh->mv[0].y - curr->mv[0].y) >= 4 ||
+                     abs(neigh->mv[1].x - curr->mv[1].x) >= 4 || abs(neigh->mv[1].y - curr->mv[1].y) >= 4) &&
+                    (abs(neigh->mv[1].x - curr->mv[0].x) >= 4 || abs(neigh->mv[1].y - curr->mv[0].y) >= 4 ||
+                     abs(neigh->mv[0].x - curr->mv[1].x) >= 4 || abs(neigh->mv[0].y - curr->mv[1].y) >= 4))
                     return 1;
-                }
-            } else { // 1 MV
-                Mv A, B;
-                int ref_A;
-                int ref_B;
-                if (curr->pred_flag[0]) {
-                    A = curr->mv[0];
-                    ref_A = sc->ref->refPicList[0].list[curr->ref_idx[0]];
-                }
-                else {
-                    A = curr->mv[1];
-                    ref_A = sc->ref->refPicList[1].list[curr->ref_idx[1]];
-                }
-                if (neigh->pred_flag[0]) {
-                    B = neigh->mv[0];
-                    ref_B = sc->ref->refPicList[0].list[neigh->ref_idx[0]];
-                } else {
-                    B = neigh->mv[1];
-                    ref_B = sc->ref->refPicList[1].list[neigh->ref_idx[1]];
-                }
-                if (ref_A == ref_B) {
-                    if (abs(A.x - B.x) >= 4 || abs(A.y - B.y) >= 4)
-                        return 1;
-                    else
-                        return 0;
-                } else
-                    return 1;
+                else
+                    return 0;
             }
+            else if (sc->ref->refPicList[0].list[neigh->ref_idx[0]] == sc->ref->refPicList[0].list[curr->ref_idx[0]]
+                     && sc->ref->refPicList[1].list[neigh->ref_idx[1]] == sc->ref->refPicList[1].list[curr->ref_idx[1]]) {
+                if (abs(neigh->mv[0].x - curr->mv[0].x) >= 4 || abs(neigh->mv[0].y - curr->mv[0].y) >= 4 ||
+                    abs(neigh->mv[1].x - curr->mv[1].x) >= 4 || abs(neigh->mv[1].y - curr->mv[1].y) >= 4)
+                    return 1;
+                else
+                    return 0;
+            }
+            else if (sc->ref->refPicList[1].list[neigh->ref_idx[1]] == sc->ref->refPicList[0].list[curr->ref_idx[0]]
+                     && sc->ref->refPicList[0].list[neigh->ref_idx[0]] == sc->ref->refPicList[1].list[curr->ref_idx[1]]) {
+                if (abs(neigh->mv[1].x - curr->mv[0].x) >= 4 || abs(neigh->mv[1].y - curr->mv[0].y) >= 4 ||
+                    abs(neigh->mv[0].x - curr->mv[1].x) >= 4 || abs(neigh->mv[0].y - curr->mv[1].y) >= 4)
+                    return 1;
+                else
+                    return 0;
+            } else {
+                return 1;
+            }
+        } else { // 1 MV
+            Mv A, B;
+            int ref_A;
+            int ref_B;
+            if (curr->pred_flag[0]) {
+                A = curr->mv[0];
+                ref_A = sc->ref->refPicList[0].list[curr->ref_idx[0]];
+            }
+            else {
+                A = curr->mv[1];
+                ref_A = sc->ref->refPicList[1].list[curr->ref_idx[1]];
+            }
+            if (neigh->pred_flag[0]) {
+                B = neigh->mv[0];
+                ref_B = sc->ref->refPicList[0].list[neigh->ref_idx[0]];
+            } else {
+                B = neigh->mv[1];
+                ref_B = sc->ref->refPicList[1].list[neigh->ref_idx[1]];
+            }
+            if (ref_A == ref_B) {
+                if (abs(A.x - B.x) >= 4 || abs(A.y - B.y) >= 4)
+                    return 1;
+                else
+                    return 0;
+            } else
+                return 1;
         }
-        else
-            return 1;
     }
-    return 0;
+    return 1;
 }
 
 void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int log2_trafo_size)
