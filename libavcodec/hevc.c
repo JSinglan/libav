@@ -2000,7 +2000,7 @@ static int hls_decode_entry_wpp(AVCodecContext *avctxt, void *input_ctb_row, int
         ff_hevc_save_states(s, ctb_addr_ts);
         avpriv_atomic_int_add_and_fetch(&sc->ctb_entry_count[ctb_row],1);
         hls_filters(s, x_ctb, y_ctb, ctb_size);
-        if (!more_data && (x_ctb+ctb_size) < sc->sps->pic_width_in_luma_samples && ctb_row != sc->sh.num_entry_point_offsets) {  
+        if (!more_data && (x_ctb+ctb_size) < sc->sps->pic_width_in_luma_samples && ctb_row != sc->sh.num_entry_point_offsets) {
         	avpriv_atomic_int_set(&sc->ERROR,  1);
             avpriv_atomic_int_add_and_fetch(&sc->ctb_entry_count[ctb_row],SHIFT_CTB_WPP);
             return 0;
