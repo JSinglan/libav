@@ -72,6 +72,10 @@ static void pic_arrays_free(HEVCContext *s)
 
     for (i = 0; i < FF_ARRAY_ELEMS(sc->DPB); i++) {
         av_freep(&sc->DPB[i].tab_mvf);
+        if (sc->DPB[i].refPicListTab != NULL) {
+            ff_hevc_free_refPicListTab(s, &sc->DPB[i]);
+            av_freep(&sc->DPB[i].refPicListTab);
+        }
     }
 }
 
@@ -115,6 +119,9 @@ static int pic_arrays_init(HEVCContext *s)
                                        pic_height_in_min_pu *
                                        sizeof(*sc->DPB[i].tab_mvf));
         if (!sc->DPB[i].tab_mvf)
+            goto fail;
+        sc->DPB[i].refPicListTab = av_mallocz(ctb_count * sizeof(RefPicListTab**));
+        if (!sc->DPB[i].refPicListTab)
             goto fail;
     }
 
