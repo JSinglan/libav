@@ -27,17 +27,15 @@
 void ff_hevc_put_unweighted_pred_arm(uint8_t *_dst, ptrdiff_t _dststride,
         int16_t *src, ptrdiff_t srcstride, int width, int height);
 
-static av_cold void h264dsp_init_neon(HEVCDSPContext *c, const int bit_depth,
-                                      const int pcm_deblock)
+static av_cold void h264dsp_init_neon(HEVCDSPContext *c, const int bit_depth)
 {
     c->put_unweighted_pred = ff_hevc_put_unweighted_pred_arm;
 }
 
-av_cold void ff_hevcdsp_init_arm(HEVCDSPContext *c, const int bit_depth,
-                                 const int pcm_deblock)
+av_cold void ff_hevcdsp_init_arm(HEVCDSPContext *c, const int bit_depth)
 {
     int cpu_flags = av_get_cpu_flags();
 
     if (have_neon(cpu_flags))
-        h264dsp_init_neon(c, bit_depth, pcm_deblock);
+        h264dsp_init_neon(c, bit_depth);
 }
