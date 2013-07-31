@@ -42,7 +42,43 @@ static int find_ref_idx(HEVCContext *s, int poc)
            "Could not find ref with POC %d\n", poc);
     return 0;
 }
-
+void ff_hevc_free_refPicListTab(HEVCContext *s, HEVCFrame *ref)
+{
+    int j;
+    HEVCSharedContext *sc = s->HEVCsc;
+    int ctb_count = sc->sps->pic_width_in_ctbs * sc->sps->pic_height_in_ctbs;
+    for (j = ctb_count-1; j > 0; j--) {
+        if (ref->refPicListTab[j] != ref->refPicListTab[j-1])
+            av_free(ref->refPicListTab[j]);
+        ref->refPicListTab[j] = NULL;
+    }
+    if (ref->refPicListTab[0] != NULL) {
+        av_free(ref->refPicListTab[0]);
+        ref->refPicListTab[0] = NULL;
+    }
+    ref->refPicList = NULL;
+}
+static void malloc_refPicListTab(HEVCContext *s)
+{
+    int i;
+    HEVCSharedContext *sc = s->HEVCsc;
+    HEVCFrame *ref  = &sc->DPB[ff_hevc_find_next_ref(s, sc->poc)];
+    int ctb_count   = sc->sps->pic_width_in_ctbs * sc->sps->pic_height_in_ctbs;
+    int ctb_addr_ts = sc->pps->ctb_addr_rs_to_ts[sc->sh.slice_address];
+    ref->refPicListTab[ctb_addr_ts] = av_mallocz(sizeof(RefPicListTab));
+    for (i = ctb_addr_ts; i < ctb_count-1; i++)
+        ref->refPicListTab[i+1] = ref->refPicListTab[i];
+    ref->refPicList = (RefPicList*) ref->refPicListTab[ctb_addr_ts];
+}
+RefPicList* ff_hevc_get_ref_list(HEVCSharedContext *sc, int short_ref_idx, int x0, int y0)
+{
+    HEVCFrame *ref   = &sc->DPB[short_ref_idx];
+    int x_cb         = x0 >> sc->sps->log2_ctb_size;
+    int y_cb         = y0 >> sc->sps->log2_ctb_size;
+    int pic_width_cb = (sc->sps->pic_width_in_luma_samples + (1<<sc->sps->log2_ctb_size)-1 ) >> sc->sps->log2_ctb_size;
+    int ctb_addr_ts  = sc->pps->ctb_addr_rs_to_ts[y_cb * pic_width_cb + x_cb];
+    return (RefPicList*) ref->refPicListTab[ctb_addr_ts];
+}
 
 static void update_refs(HEVCContext *s)
 {

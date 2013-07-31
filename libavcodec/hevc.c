@@ -235,9 +235,6 @@ static int hls_slice_header(HEVCContext *s)
 
     // Coded parameters
     sh->first_slice_in_pic_flag = get_bits1(gb);
-    if (sc->nal_unit_type == NAL_IDR_W_RADL && sh->first_slice_in_pic_flag) {
-        ff_hevc_clear_refs(s);
-    }
     if ((sc->nal_unit_type == NAL_IDR_W_RADL || sc->nal_unit_type == NAL_IDR_N_LP) &&
         sh->first_slice_in_pic_flag) {
         sc->seq_decode = (sc->seq_decode + 1) & 0xff;
@@ -300,6 +297,9 @@ static int hls_slice_header(HEVCContext *s)
                          sc->sps->pcm.loop_filter_disable_flag) || sc->pps->transquant_bypass_enable_flag);
 
         ff_videodsp_init(&sc->vdsp, sc->sps->bit_depth);
+    }
+    if (sc->nal_unit_type == NAL_IDR_W_RADL && sh->first_slice_in_pic_flag) {
+        ff_hevc_clear_refs(s);
     }
     sh->dependent_slice_segment_flag = 0;
     if (!sh->first_slice_in_pic_flag) {
@@ -446,7 +446,6 @@ static int hls_slice_header(HEVCContext *s)
 
             sh->max_num_merge_cand = 5 - get_ue_golomb(gb);
         }
-        ff_hevc_set_ref_poc_list(s);
         sh->slice_qp_delta = get_se_golomb(gb);
         if (sc->pps->pic_slice_level_chroma_qp_offsets_present_flag) {
             sh->slice_cb_qp_offset = get_se_golomb(gb);
@@ -476,6 +475,7 @@ static int hls_slice_header(HEVCContext *s)
             sh->slice_loop_filter_across_slices_enabled_flag = sc->pps->seq_loop_filter_across_slices_enabled_flag;
         }
     }
+    ff_hevc_set_ref_poc_list(s);
 
     sh->num_entry_point_offsets = 0;
     if (sc->pps->tiles_enabled_flag == 1 || sc->pps->entropy_coding_sync_enabled_flag == 1) {
@@ -1662,12 +1662,8 @@ static int hls_coding_unit(HEVCContext *s, int x0, int y0, int log2_cb_size)
     for (x = 0; x < 4; x++) {
         lc->pu.intra_pred_mode[x] = 1;
     }
-    if (sc->pps->transquant_bypass_enable_flag) {
+    if (sc->pps->transquant_bypass_enable_flag)
         lc->cu.cu_transquant_bypass_flag = ff_hevc_cu_transquant_bypass_flag_decode(s);
-        av_log(s->avctx, AV_LOG_ERROR,
-               "transquant: %d x0 %d y0 %d\n",
-               lc->cu.cu_transquant_bypass_flag, x0, y0);
-    }
 
     if (sc->sh.slice_type != I_SLICE) {
         uint8_t skip_flag = ff_hevc_skip_flag_decode(s, x0, y0, x_cb, y_cb);
@@ -1693,10 +1689,9 @@ static int hls_coding_unit(HEVCContext *s, int x0, int y0, int log2_cb_size)
         		lc->save_boundary_strengths[lc->nb_saved].size = log2_cb_size;
         		lc->nb_saved ++;
         	}
-            if (sc->pps->transquant_bypass_enable_flag && lc->cu.cu_transquant_bypass_flag) {
+            if (sc->pps->transquant_bypass_enable_flag && lc->cu.cu_transquant_bypass_flag)
                 set_deblocking_bypass(s, x0, y0, log2_cb_size);
 
-            }
         }
     } else {
         if (sc->sh.slice_type != I_SLICE) {
@@ -1782,9 +1777,8 @@ static int hls_coding_unit(HEVCContext *s, int x0, int y0, int log2_cb_size)
                 		lc->save_boundary_strengths[lc->nb_saved].size = log2_cb_size;
                 		lc->nb_saved ++;
                 	}
-                    if (sc->pps->transquant_bypass_enable_flag && lc->cu.cu_transquant_bypass_flag) {
+                    if (sc->pps->transquant_bypass_enable_flag && lc->cu.cu_transquant_bypass_flag)
                         set_deblocking_bypass(s, x0, y0, log2_cb_size);
-                    }
                 }
             }
         }
@@ -2677,6 +2671,7 @@ static av_cold int hevc_decode_free(AVCodecContext *avctx)
     HEVCContext *s = avctx->priv_data;
     HEVCSharedContext *sc = s->HEVCsc;
     HEVCLocalContext *lc = s->HEVClc;
+    pic_arrays_free(s);
     av_free(sc->rbsp_buffer);
     av_free(sc->skipped_bytes_pos);
     av_frame_free(&sc->tmp_frame);
@@ -2744,7 +2739,6 @@ static av_cold int hevc_decode_free(AVCodecContext *avctx)
         av_freep(&sc->pps_list[i]);
     }
     av_freep(&s->HEVClc);
-    pic_arrays_free(s);
     av_freep(&s->HEVCsc);
     return 0;
 }
