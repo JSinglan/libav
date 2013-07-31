@@ -168,12 +168,15 @@ static void copy_CTB(uint8_t *dst, uint8_t *src, int width, int height, int stri
 static int get_pcm(HEVCContext *s, int x, int y)
 {
     HEVCSharedContext *sc = s->HEVCsc;
-    int log2_min_pu_size = sc->sps->log2_min_pu_size - 1;
+    int log2_min_pu_size = sc->sps->log2_min_pu_size;
     int pic_width_in_min_pu = s->HEVCsc->sps->pic_width_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
+    int pic_height_in_min_pu = s->HEVCsc->sps->pic_height_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
+    int x_pu = x >> log2_min_pu_size;
+    int y_pu = y >> log2_min_pu_size;
 
-    if (x < 0)
-        return 0;
-    return sc->is_pcm[(y >> log2_min_pu_size) * pic_width_in_min_pu + (x >> log2_min_pu_size)];
+    if (x < 0 || x_pu >= pic_width_in_min_pu || y < 0 || y_pu >= pic_height_in_min_pu)
+        return 2;
+    return sc->is_pcm[y_pu * pic_width_in_min_pu + x_pu];
 }
 
 
