@@ -261,11 +261,15 @@ static int hls_slice_header(HEVCContext *s)
         sc->vps = sc->vps_list[sc->sps->vps_id];
 
         //TODO: Handle switching between different SPS better
-        pic_arrays_free(s);
-        ret = pic_arrays_init(s);
-        if (ret < 0)
-            return AVERROR(ENOMEM);
-
+        if (s->width  != sc->sps->pic_width_in_luma_samples ||
+            s->height != sc->sps->pic_height_in_luma_samples) {
+            pic_arrays_free(s);
+            ret = pic_arrays_init(s);
+            s->width = sc->sps->pic_width_in_luma_samples;
+            s->height = sc->sps->pic_height_in_luma_samples;
+            if (ret < 0)
+                return AVERROR(ENOMEM);
+        }
         s->avctx->width = sc->sps->pic_width_in_luma_samples;
         s->avctx->height = sc->sps->pic_height_in_luma_samples;
         if (sc->sps->chroma_format_idc == 0 || sc->sps->separate_colour_plane_flag) {
@@ -2668,6 +2672,7 @@ static av_cold int hevc_decode_init(AVCodecContext *avctx)
 
     if (avctx->extradata_size > 0 && avctx->extradata)
         return decode_nal_units(s, s->avctx->extradata, s->avctx->extradata_size);
+    s->width = s->height = 0;
 
     return 0;
 }
