@@ -112,6 +112,6 @@ void ff_hevc_dsp_init(HEVCDSPContext *hevcdsp, int bit_depth, int pcm_deblock)
         break;
     }
 
-//    if (ARCH_X86) ff_hevcdsp_init_x86(hevcdsp, bit_depth, pcm_deblock);
+    if (ARCH_X86) ff_hevcdsp_init_x86(hevcdsp, bit_depth, pcm_deblock);
     if (ARCH_ARM) ff_hevcdsp_init_arm(hevcdsp, bit_depth, pcm_deblock);
 }
