@@ -427,7 +427,7 @@ enum SliceType {
 
 typedef struct SliceHeader {
     uint8_t first_slice_in_pic_flag;
-    int slice_address;
+    int32_t slice_address;
 
     enum SliceType slice_type;
 
