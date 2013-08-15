@@ -23,7 +23,7 @@
 
 #include "hevc.h"
 #include "internal.h"
-//#define TEST_DPB
+
 int ff_hevc_find_ref_idx(HEVCContext *s, int poc)
 {
     int i;
@@ -99,9 +99,6 @@ static void update_refs(HEVCContext *s)
         if (ref->frame->buf[0] && !used[i])
             ref->flags &= ~HEVC_FRAME_FLAG_SHORT_REF;
         if (ref->frame->buf[0] && !ref->flags) {
-#ifdef TEST_DPB
-            printf("\t\t\t\t\t\t%d\t%d\n",i, ref->poc);
-#endif
             av_frame_unref(ref->frame);
             ff_hevc_free_refPicListTab(s, ref);
         }
@@ -114,9 +111,6 @@ void ff_hevc_clear_refs(HEVCContext *s)
     for (i = 0; i < FF_ARRAY_ELEMS(s->HEVCsc->DPB); i++) {
         HEVCFrame *ref = &s->HEVCsc->DPB[i];
         if (!(ref->flags & HEVC_FRAME_FLAG_OUTPUT)) {
-#ifdef TEST_DPB
-            printf("\t\t\t\t\t\t%d\t%d\n",i, ref->poc);
-#endif
             av_frame_unref(ref->frame);
             ref->flags = 0;
             ff_hevc_free_refPicListTab(s, ref);
@@ -129,9 +123,6 @@ void ff_hevc_clean_refs(HEVCContext *s)
     int i;
     for (i = 0; i < FF_ARRAY_ELEMS(s->HEVCsc->DPB); i++) {
         HEVCFrame *ref = &s->HEVCsc->DPB[i];
-#ifdef TEST_DPB
-        printf("\t\t\t\t\t\t%d\t%d\n",i, ref->poc);
-#endif
         av_frame_unref(ref->frame);
         ref->flags = 0;
     }
@@ -168,9 +159,6 @@ int ff_hevc_set_new_ref(HEVCContext *s, AVFrame **frame, int poc)
 
             ref->flags    = HEVC_FRAME_FLAG_OUTPUT | HEVC_FRAME_FLAG_SHORT_REF;
             ref->sequence = s->HEVCsc->seq_decode;
-#ifdef TEST_DPB
-            printf("%d\t%d\n",i, poc);
-#endif
             return ff_reget_buffer(s->avctx, *frame);
         }
     }
@@ -205,10 +193,6 @@ int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
             return 0;
 
         if (nb_output) {
-#ifdef TEST_DPB
-            printf("\t\t\t%d\t%d\n", min_idx, min_poc);
-#endif
-//            av_log(s->avctx, AV_LOG_INFO, "Display : POC %d\n", min_poc);
             HEVCFrame *frame = &sc->DPB[min_idx];
 
             frame->flags &= ~HEVC_FRAME_FLAG_OUTPUT;

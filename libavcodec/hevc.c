@@ -321,7 +321,7 @@ static int hls_slice_header(HEVCContext *s)
         if (sc->pps->dependent_slice_segments_enabled_flag)
             sh->dependent_slice_segment_flag = get_bits1(gb);
 
-        slice_address_length = av_ceil_log2_c(sc->sps->pic_width_in_ctbs * 
+        slice_address_length = av_ceil_log2_c(sc->sps->pic_width_in_ctbs *
                                               sc->sps->pic_height_in_ctbs);
         sh->slice_address = get_bits(gb, slice_address_length);
     } else {
@@ -487,7 +487,7 @@ static int hls_slice_header(HEVCContext *s)
         }
 
         if (sc->pps->seq_loop_filter_across_slices_enabled_flag &&
-           (sh->slice_sample_adaptive_offset_flag[0] || 
+           (sh->slice_sample_adaptive_offset_flag[0] ||
             sh->slice_sample_adaptive_offset_flag[1] ||
             !sh->disable_deblocking_filter_flag)) {
             sh->slice_loop_filter_across_slices_enabled_flag = get_bits1(gb);
@@ -549,8 +549,6 @@ static int hls_slice_header(HEVCContext *s)
 
     return 0;
 }
-
-
 
 #define CTB(tab, x, y) ((tab)[(y) * sc->sps->pic_width_in_ctbs + (x)])
 
@@ -1130,7 +1128,6 @@ static int hls_pcm_sample(HEVCContext *s, int x0, int y0, int log2_cb_size)
         lc->nb_saved++;
     }
 
-
     ret = init_get_bits(&gb, pcm, length);
     if (ret < 0)
         return ret;
@@ -1382,7 +1379,7 @@ static void hls_prediction_unit(HEVCContext *s, int x0, int y0, int nPbW, int nP
             }
         }
     }
-    
+
     if (current_mv.pred_flag[0] && !current_mv.pred_flag[1]) {
         DECLARE_ALIGNED( 16, int16_t, tmp[MAX_PB_SIZE*MAX_PB_SIZE] );
         DECLARE_ALIGNED( 16, int16_t, tmp2[MAX_PB_SIZE * MAX_PB_SIZE] );
@@ -1499,7 +1496,6 @@ static void hls_prediction_unit(HEVCContext *s, int x0, int y0, int nPbW, int nP
     }
     return;
 }
-
 
 /**
  * 8.4.1
@@ -1972,10 +1968,10 @@ static int hls_decode_entry(AVCodecContext *avctxt, void *isFilterThread)
             return more_data;
         ctb_addr_ts++;
         ff_hevc_save_states(s, ctb_addr_ts);
-        hls_filters(s, x_ctb, y_ctb, ctb_size);
+        ff_hevc_hls_filters(s, x_ctb, y_ctb, ctb_size);
     }
     if (x_ctb + ctb_size >= sc->sps->pic_width_in_luma_samples && y_ctb + ctb_size >= sc->sps->pic_height_in_luma_samples)
-        hls_filter(s, x_ctb, y_ctb);
+        ff_hevc_hls_filter(s, x_ctb, y_ctb);
     return ctb_addr_ts;
 }
 
@@ -2044,7 +2040,7 @@ static int hls_decode_entry_wpp(AVCodecContext *avctxt, void *input_ctb_row, int
         ctb_addr_rs       = sc->pps->ctb_addr_ts_to_rs[ctb_addr_ts];
         ff_hevc_save_states(s, ctb_addr_ts);
         avpriv_atomic_int_add_and_fetch(&sc->ctb_entry_count[ctb_row],1);
-        hls_filters(s, x_ctb, y_ctb, ctb_size);
+        ff_hevc_hls_filters(s, x_ctb, y_ctb, ctb_size);
         if (!more_data && (x_ctb+ctb_size) < sc->sps->pic_width_in_luma_samples && ctb_row != sc->sh.num_entry_point_offsets) {
         	avpriv_atomic_int_set(&sc->ERROR,  1);
             avpriv_atomic_int_add_and_fetch(&sc->ctb_entry_count[ctb_row],SHIFT_CTB_WPP);
@@ -2052,7 +2048,7 @@ static int hls_decode_entry_wpp(AVCodecContext *avctxt, void *input_ctb_row, int
         }
 
         if ((x_ctb+ctb_size) >= sc->sps->pic_width_in_luma_samples && (y_ctb+ctb_size) >= sc->sps->pic_height_in_luma_samples ) {
-            hls_filter(s, x_ctb, y_ctb);
+            ff_hevc_hls_filter(s, x_ctb, y_ctb);
             avpriv_atomic_int_add_and_fetch(&sc->ctb_entry_count[ctb_row],SHIFT_CTB_WPP);
             return ctb_addr_ts;
         }
@@ -2234,7 +2230,7 @@ static int hls_slice_data_wpp(HEVCContext *s, const uint8_t *nal, int length)
 
         for (y_ctb = 0; y_ctb < sc->sps->pic_height_in_luma_samples; y_ctb += ctb_size)
             for (x_ctb = 0; x_ctb < sc->sps->pic_width_in_luma_samples; x_ctb += ctb_size)
-                hls_filter(s, x_ctb, y_ctb);
+                ff_hevc_hls_filter(s, x_ctb, y_ctb);
     }
 
     for (i = 0; i <= sc->sh.num_entry_point_offsets; i++)
@@ -2477,7 +2473,7 @@ static const uint8_t *extract_rbsp(HEVCContext *s, const uint8_t *src,
     int i, si, di;
     uint8_t *dst;
     HEVCSharedContext *sc = s->HEVCsc;
-	sc->skipped_bytes = 0;
+    sc->skipped_bytes = 0;
 #define STARTCODE_TEST                                                  \
         if (i + 2 < length && src[i + 1] == 0 && src[i + 2] <= 3) {     \
             if (src[i + 2] != 3) {                                      \
