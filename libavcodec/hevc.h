@@ -475,7 +475,7 @@ typedef struct SliceHeader {
     int* entry_point_offset;
     int * offset;
     int * size;
-    int num_entry_point_offsets; 
+    int num_entry_point_offsets;
 
     uint8_t luma_log2_weight_denom;
     int16_t chroma_log2_weight_denom;

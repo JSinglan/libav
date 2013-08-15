@@ -30,6 +30,7 @@
 #include "libavutil/md5.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
+
 #include "cabac_functions.h"
 #include "golomb.h"
 #include "hevc.h"
@@ -210,6 +211,7 @@ static const uint8_t diag_scan8x8_inv[8][8] = {
     { 21, 29, 37, 44, 50, 55, 59, 62, },
     { 28, 36, 43, 49, 54, 58, 61, 63, },
 };
+
 /**
  * NOTE: Each function hls_foo correspond to the function foo in the
  * specification (HLS stands for High Level Syntax).
@@ -436,6 +438,7 @@ static int hls_slice_header(HEVCContext *s)
     }
     sc->pps = sc->pps_list[sh->pps_id];
     if (sc->sps != sc->sps_list[sc->pps->sps_id]) {
+        const AVPixFmtDescriptor *desc;
 
         sc->sps = sc->sps_list[sc->pps->sps_id];
         sc->vps = sc->vps_list[sc->sps->vps_id];
@@ -475,11 +478,16 @@ static int hls_slice_header(HEVCContext *s)
             av_log(s->avctx, AV_LOG_ERROR, "non-4:2:0 support is currently unspecified.\n");
             return AVERROR_PATCHWELCOME;
         }
+
+        desc = av_pix_fmt_desc_get(s->avctx->pix_fmt);
+        if (!desc)
+            return AVERROR(EINVAL);
+
         sc->sps->hshift[0] = sc->sps->vshift[0] = 0;
         sc->sps->hshift[2] =
-        sc->sps->hshift[1] = av_pix_fmt_descriptors[s->avctx->pix_fmt].log2_chroma_w;
+        sc->sps->hshift[1] = desc->log2_chroma_w;
         sc->sps->vshift[2] =
-        sc->sps->vshift[1] = av_pix_fmt_descriptors[s->avctx->pix_fmt].log2_chroma_h;
+        sc->sps->vshift[1] = desc->log2_chroma_h;
 
         sc->sps->pixel_shift = sc->sps->bit_depth > 8;
 
@@ -2594,7 +2602,7 @@ static int decode_nal_unit(HEVCContext *s, const uint8_t *nal, int length)
             lc->start_of_tiles_x = 0;
             sc->is_decoded = 0;
             if (sc->pps->tiles_enabled_flag )
-	            lc->end_of_tiles_x   = sc->pps->column_width[0]<< sc->sps->log2_ctb_size;
+                lc->end_of_tiles_x   = sc->pps->column_width[0]<< sc->sps->log2_ctb_size;
         }
         if( !sc->pps->cu_qp_delta_enabled_flag )
             lc->qp_y = ((sc->sh.slice_qp + 52 + 2 * sc->sps->qp_bd_offset) %
