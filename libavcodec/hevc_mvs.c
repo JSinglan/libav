@@ -22,7 +22,21 @@
  */
 
 #include "hevc.h"
-#include "hevcdata.h"
+
+static const uint8_t l0_l1_cand_idx[12][2] = {
+    { 0, 1, },
+    { 1, 0, },
+    { 0, 2, },
+    { 2, 0, },
+    { 1, 2, },
+    { 2, 1, },
+    { 0, 3, },
+    { 3, 0, },
+    { 1, 3, },
+    { 3, 1, },
+    { 2, 3, },
+    { 3, 2, },
+};
 
 /*
  * 6.4.1 Derivation process for z-scan order block availability

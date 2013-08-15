@@ -201,94 +201,19 @@ static void decode_hrd(HEVCContext *s)
     av_log(s->avctx, AV_LOG_ERROR, "HRD parsing not yet implemented\n");
 }
 
-static void decode_vui(HEVCContext *s, SPS *sps)
-{
-    VUI *vui = &sps->vui;
-    GetBitContext *gb = s->HEVClc->gb;
-
-    av_log(s->avctx, AV_LOG_DEBUG, "Decoding VUI\n");
-
-    vui->aspect_ratio_info_present_flag = get_bits1(gb);
-    if (vui->aspect_ratio_info_present_flag) {
-        vui->aspect_ratio_idc = get_bits(gb, 8);
-        if (vui->aspect_ratio_idc == 255) { // EXTENDED_SAR
-            vui->sar_width = get_bits(gb, 16);
-            vui->sar_height = get_bits(gb, 16);
-        }
-    }
-
-    vui->overscan_info_present_flag = get_bits1(gb);
-    if (vui->overscan_info_present_flag)
-        vui->overscan_appropriate_flag = get_bits1(gb);
-
-    vui->video_signal_type_present_flag = get_bits1(gb);
-    if (vui->video_signal_type_present_flag) {
-        vui->video_format = get_bits(gb, 3);
-        vui->video_full_range_flag = get_bits1(gb);
-        vui->colour_description_present_flag = get_bits1(gb);
-        if (vui->colour_description_present_flag) {
-            vui->colour_primaries = get_bits(gb, 8);
-            vui->transfer_characteristic = get_bits(gb, 8);
-            vui->matrix_coeffs = get_bits(gb, 8);
-        }
-    }
-
-    vui->chroma_loc_info_present_flag = get_bits1(gb);
-    if (vui->chroma_loc_info_present_flag) {
-        vui->chroma_sample_loc_type_top_field = get_ue_golomb(gb);
-        vui->chroma_sample_loc_type_bottom_field = get_ue_golomb(gb);
-    }
-
-    vui->neutra_chroma_indication_flag = get_bits1(gb);
-    vui->field_seq_flag = get_bits1(gb);
-    vui->frame_field_info_present_flag = get_bits1(gb);
-
-    vui->default_display_window_flag = get_bits1(gb);
-    if (vui->default_display_window_flag) {
-        vui->def_disp_win.left_offset = get_ue_golomb(gb);
-        vui->def_disp_win.right_offset = get_ue_golomb(gb);
-        vui->def_disp_win.top_offset = get_ue_golomb(gb);
-        vui->def_disp_win.bottom_offset = get_ue_golomb(gb);
-    }
-
-    vui->vui_timing_info_present_flag = get_bits1(gb);
-    if (vui->vui_timing_info_present_flag) {
-        vui->vui_num_units_in_tick = get_bits(gb, 32);
-        vui->vui_time_scale = get_bits(gb, 32);
-        vui->vui_poc_proportional_to_timing_flag = get_bits1(gb);
-        if (vui->vui_poc_proportional_to_timing_flag)
-            vui->vui_num_ticks_poc_diff_one_minus1 = get_ue_golomb(gb);
-        vui->vui_hrd_parameters_present_flag = get_bits1(gb);
-        if (vui->vui_hrd_parameters_present_flag)
-            decode_hrd(s);
-    }
-
-    vui->bitstream_restriction_flag = get_bits1(gb);
-    if (vui->bitstream_restriction_flag) {
-        vui->tiles_fixed_structure_flag = get_bits1(gb);
-        vui->motion_vectors_over_pic_boundaries_flag = get_bits1(gb);
-        vui->restricted_ref_pic_lists_flag = get_bits1(gb);
-        vui->min_spatial_segmentation_idc = get_ue_golomb(gb);
-        vui->max_bytes_per_pic_denom = get_ue_golomb(gb);
-        vui->max_bits_per_min_cu_denom = get_ue_golomb(gb);
-        vui->log2_max_mv_length_horizontal = get_ue_golomb(gb);
-        vui->log2_max_mv_length_vertical = get_ue_golomb(gb);
-    }
-}
-
 int ff_hevc_decode_nal_vps(HEVCContext *s)
 {
     int i,j;
     GetBitContext *gb = s->HEVClc->gb;
     int vps_id = 0;
-    VPS *vps = av_mallocz(sizeof(*vps));
+    VPS *vps;
 
     av_log(s->avctx, AV_LOG_DEBUG, "Decoding VPS\n");
 
+    vps = av_mallocz(sizeof(*vps));
     if (!vps)
         return -1;
     vps_id = get_bits(gb, 4);
-
     if (vps_id >= MAX_VPS_COUNT) {
         av_log(s->avctx, AV_LOG_ERROR, "VPS id out of range: %d\n", vps_id);
         goto err;
@@ -369,14 +294,89 @@ err:
     return -1;
 }
 
+static void decode_vui(HEVCContext *s, SPS *sps)
+{
+    VUI *vui = &sps->vui;
+    GetBitContext *gb = s->HEVClc->gb;
+
+    av_log(s->avctx, AV_LOG_DEBUG, "Decoding VUI\n");
+
+    vui->aspect_ratio_info_present_flag = get_bits1(gb);
+    if (vui->aspect_ratio_info_present_flag) {
+        vui->aspect_ratio_idc = get_bits(gb, 8);
+        if (vui->aspect_ratio_idc == 255) { // EXTENDED_SAR
+            vui->sar_width  = get_bits(gb, 16);
+            vui->sar_height = get_bits(gb, 16);
+        }
+    }
+
+    vui->overscan_info_present_flag = get_bits1(gb);
+    if (vui->overscan_info_present_flag)
+        vui->overscan_appropriate_flag = get_bits1(gb);
+
+    vui->video_signal_type_present_flag = get_bits1(gb);
+    if (vui->video_signal_type_present_flag) {
+        vui->video_format                    = get_bits(gb, 3);
+        vui->video_full_range_flag           = get_bits1(gb);
+        vui->colour_description_present_flag = get_bits1(gb);
+        if (vui->colour_description_present_flag) {
+            vui->colour_primaries        = get_bits(gb, 8);
+            vui->transfer_characteristic = get_bits(gb, 8);
+            vui->matrix_coeffs           = get_bits(gb, 8);
+        }
+    }
+
+    vui->chroma_loc_info_present_flag = get_bits1(gb);
+    if (vui->chroma_loc_info_present_flag) {
+        vui->chroma_sample_loc_type_top_field    = get_ue_golomb(gb);
+        vui->chroma_sample_loc_type_bottom_field = get_ue_golomb(gb);
+    }
+
+    vui->neutra_chroma_indication_flag = get_bits1(gb);
+    vui->field_seq_flag                = get_bits1(gb);
+    vui->frame_field_info_present_flag = get_bits1(gb);
+
+    vui->default_display_window_flag = get_bits1(gb);
+    if (vui->default_display_window_flag) {
+        vui->def_disp_win.left_offset   = get_ue_golomb(gb);
+        vui->def_disp_win.right_offset  = get_ue_golomb(gb);
+        vui->def_disp_win.top_offset    = get_ue_golomb(gb);
+        vui->def_disp_win.bottom_offset = get_ue_golomb(gb);
+    }
+
+    vui->vui_timing_info_present_flag = get_bits1(gb);
+    if (vui->vui_timing_info_present_flag) {
+        vui->vui_num_units_in_tick               = get_bits(gb, 32);
+        vui->vui_time_scale                      = get_bits(gb, 32);
+        vui->vui_poc_proportional_to_timing_flag = get_bits1(gb);
+        if (vui->vui_poc_proportional_to_timing_flag)
+            vui->vui_num_ticks_poc_diff_one_minus1 = get_ue_golomb(gb);
+        vui->vui_hrd_parameters_present_flag = get_bits1(gb);
+        if (vui->vui_hrd_parameters_present_flag)
+            decode_hrd(s);
+    }
+
+    vui->bitstream_restriction_flag = get_bits1(gb);
+    if (vui->bitstream_restriction_flag) {
+        vui->tiles_fixed_structure_flag              = get_bits1(gb);
+        vui->motion_vectors_over_pic_boundaries_flag = get_bits1(gb);
+        vui->restricted_ref_pic_lists_flag           = get_bits1(gb);
+        vui->min_spatial_segmentation_idc            = get_ue_golomb(gb);
+        vui->max_bytes_per_pic_denom                 = get_ue_golomb(gb);
+        vui->max_bits_per_min_cu_denom               = get_ue_golomb(gb);
+        vui->log2_max_mv_length_horizontal           = get_ue_golomb(gb);
+        vui->log2_max_mv_length_vertical             = get_ue_golomb(gb);
+    }
+}
+
 int ff_hevc_decode_nal_sps(HEVCContext *s)
 {
-    int i;
-    int bit_depth_chroma, start;
     GetBitContext *gb = s->HEVClc->gb;
-    int log2_diff_max_min_transform_block_size;
-
     int sps_id = 0;
+    int i;
+    int log2_diff_max_min_transform_block_size;
+    int bit_depth_chroma, start;
+
     SPS *sps = av_mallocz(sizeof(*sps));
     if (!sps)
         goto err;
@@ -590,6 +590,28 @@ err:
     return -1;
 }
 
+void ff_hevc_pps_free(PPS **ppps)
+{
+    PPS *pps = *ppps;
+
+    if (!pps)
+        return;
+
+    av_freep(&pps->column_width);
+    av_freep(&pps->row_height);
+    av_freep(&pps->col_bd);
+    av_freep(&pps->row_bd);
+    av_freep(&pps->col_idxX);
+    av_freep(&pps->ctb_addr_rs_to_ts);
+    av_freep(&pps->ctb_addr_ts_to_rs);
+    av_freep(&pps->tile_pos_rs);
+    av_freep(&pps->tile_id);
+    av_freep(&pps->min_cb_addr_zs);
+    av_freep(&pps->min_tb_addr_zs);
+
+    av_freep(ppps);
+}
+
 int ff_hevc_decode_nal_pps(HEVCContext *s)
 {
     GetBitContext *gb = s->HEVClc->gb;
@@ -607,12 +629,12 @@ int ff_hevc_decode_nal_pps(HEVCContext *s)
 
     // Default values
     pps->loop_filter_across_tiles_enabled_flag = 1;
-    pps->num_tile_columns     = 1;
-    pps->num_tile_rows        = 1;
-    pps->uniform_spacing_flag = 1;
-    pps->pps_disable_deblocking_filter_flag = 0;
-    pps->beta_offset = 0;
-    pps->tc_offset = 0;
+    pps->num_tile_columns                      = 1;
+    pps->num_tile_rows                         = 1;
+    pps->uniform_spacing_flag                  = 1;
+    pps->pps_disable_deblocking_filter_flag    = 0;
+    pps->beta_offset                           = 0;
+    pps->tc_offset                             = 0;
 
     // Coded parameters
     pps_id = get_ue_golomb(gb);
@@ -883,38 +905,14 @@ int ff_hevc_decode_nal_pps(HEVCContext *s)
         }
     }
 
-    if (s->HEVCsc->pps_list[pps_id] != NULL) {
-        PPS *pps_f = s->HEVCsc->pps_list[pps_id];
-        av_free(pps_f->column_width);
-        av_free(pps_f->row_height);
-        av_free(pps_f->col_bd);
-        av_free(pps_f->row_bd);
-        av_free(pps_f->col_idxX);
-        av_free(pps_f->ctb_addr_rs_to_ts);
-        av_free(pps_f->ctb_addr_ts_to_rs);
-        av_free(pps_f->tile_pos_rs);
-        av_free(pps_f->tile_id);
-        av_free(pps_f->min_cb_addr_zs);
-        av_free(pps_f->min_tb_addr_zs);
-        av_free(pps_f);
-    }
+    if (s->HEVCsc->pps_list[pps_id] != NULL)
+        ff_hevc_pps_free(&s->HEVCsc->pps_list[pps_id]);
 
     s->HEVCsc->pps_list[pps_id] = pps;
     return 0;
 
 err:
-    av_free(pps->column_width);
-    av_free(pps->row_height);
-    av_free(pps->col_bd);
-    av_free(pps->row_bd);
-    av_free(pps->col_idxX);
-    av_free(pps->ctb_addr_rs_to_ts);
-    av_free(pps->ctb_addr_ts_to_rs);
-    av_free(pps->tile_pos_rs);
-    av_free(pps->tile_id);
-    av_free(pps->min_cb_addr_zs);
-    av_free(pps->min_tb_addr_zs);
+    ff_hevc_pps_free(&pps);
 
-    av_free(pps);
     return -1;
 }

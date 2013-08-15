@@ -137,6 +137,10 @@ typedef struct RefPicListTab {
 #define L0 0
 #define L1 1
 
+#define EPEL_EXTRA_BEFORE 1
+#define EPEL_EXTRA_AFTER  2
+#define EPEL_EXTRA        3
+
 typedef struct HEVCWindow {
     int left_offset;
     int right_offset;
@@ -943,5 +947,11 @@ int ff_hevc_cu_qp_delta_sign_flag(HEVCContext *s);
 int ff_hevc_cu_qp_delta_abs(HEVCContext *s);
 void ff_hevc_hls_filter(HEVCContext *s, int x, int y);
 void ff_hevc_hls_filters(HEVCContext *s, int x_ctb, int y_ctb, int ctb_size);
+
+void ff_hevc_pps_free(PPS **ppps);
+
+extern const uint8_t ff_hevc_qpel_extra_before[4];
+extern const uint8_t ff_hevc_qpel_extra_after[4];
+extern const uint8_t ff_hevc_qpel_extra[4];
 
 #endif // AVCODEC_HEVC_H

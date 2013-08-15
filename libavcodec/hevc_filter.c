@@ -21,19 +21,31 @@
  * License along with Libav; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include "libavutil/attributes.h"
+
 #include "libavutil/common.h"
-#include "libavutil/pixdesc.h"
 #include "libavutil/internal.h"
+
 #include "cabac_functions.h"
 #include "golomb.h"
-#include "hevcdata.h"
 #include "hevc.h"
 #include "bit_depth_template.c"
 
 #define LUMA 0
 #define CB 1
 #define CR 2
+
+static const uint8_t tctable[54] = {
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, // QP  0...18
+     1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, // QP 19...37
+     5, 5, 6, 6, 7, 8, 9,10,11,13,14,16,18,20,22,24           // QP 38...53
+};
+
+static const uint8_t betatable[52] = {
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 7, 8, // QP 0...18
+     9,10,11,12,13,14,15,16,17,18,20,22,24,26,28,30,32,34,36, // QP 19...37
+    38,40,42,44,46,48,50,52,54,56,58,60,62,64                 // QP 38...51
+};
+
 static int chroma_tc(HEVCSharedContext *s, int qp_y, int c_idx, int tc_offset)
 {
     static const int qp_c[] = { 29, 30, 31, 32, 33, 33, 34, 34, 35, 35, 36, 36, 37, 37 };
@@ -170,21 +182,6 @@ static void copy_CTB(uint8_t *dst, uint8_t *src, int width, int height, int stri
     }
 }
 
-static int get_pcm(HEVCContext *s, int x, int y)
-{
-    HEVCSharedContext *sc = s->HEVCsc;
-    int log2_min_pu_size = sc->sps->log2_min_pu_size;
-    int pic_width_in_min_pu = s->HEVCsc->sps->pic_width_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
-    int pic_height_in_min_pu = s->HEVCsc->sps->pic_height_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
-    int x_pu = x >> log2_min_pu_size;
-    int y_pu = y >> log2_min_pu_size;
-
-    if (x < 0 || x_pu >= pic_width_in_min_pu || y < 0 || y_pu >= pic_height_in_min_pu)
-        return 2;
-    return sc->is_pcm[y_pu * pic_width_in_min_pu + x_pu];
-}
-
-
 #define CTB(tab, x, y) ((tab)[(y) * sc->sps->pic_width_in_ctbs + (x)])
 
 static void sao_filter_CTB(HEVCSharedContext *sc, int x, int y, int c_idx_min, int c_idx_max)
@@ -258,6 +255,20 @@ static void sao_filter_CTB(HEVCSharedContext *sc, int x, int y, int c_idx_min, i
             }
         }
     }
+}
+
+static int get_pcm(HEVCContext *s, int x, int y)
+{
+    HEVCSharedContext *sc    = s->HEVCsc;
+    int log2_min_pu_size     = sc->sps->log2_min_pu_size;
+    int pic_width_in_min_pu  = s->HEVCsc->sps->pic_width_in_luma_samples  >> s->HEVCsc->sps->log2_min_pu_size;
+    int pic_height_in_min_pu = s->HEVCsc->sps->pic_height_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
+    int x_pu = x >> log2_min_pu_size;
+    int y_pu = y >> log2_min_pu_size;
+
+    if (x < 0 || x_pu >= pic_width_in_min_pu || y < 0 || y_pu >= pic_height_in_min_pu)
+        return 2;
+    return sc->is_pcm[y_pu * pic_width_in_min_pu + x_pu];
 }
 
 #define TC_CALC(qp, bs) tctable[av_clip((qp) + DEFAULT_INTRA_TC_OFFSET * ((bs) - 1) + ((tc_offset >> 1) << 1), 0, MAX_QP + DEFAULT_INTRA_TC_OFFSET)]
@@ -616,6 +627,3 @@ void ff_hevc_hls_filters(HEVCContext *s, int x_ctb, int y_ctb, int ctb_size)
             ff_hevc_hls_filter(s, x_ctb - ctb_size, y_ctb);
     }
 }
-
-
-
