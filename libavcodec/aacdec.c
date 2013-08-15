@@ -789,7 +789,8 @@ static int decode_audio_specific_config(AACContext *ac,
         av_dlog(avctx, "%02x ", avctx->extradata[i]);
     av_dlog(avctx, "\n");
 
-    init_get_bits(&gb, data, bit_size);
+    if ((ret = init_get_bits(&gb, data, bit_size)) < 0)
+        return ret;
 
     if ((i = avpriv_mpeg4audio_get_config(m4ac, data, bit_size,
                                           sync_extension)) < 0)
@@ -1172,7 +1173,7 @@ static int decode_scalefactors(AACContext *ac, float sf[120], GetBitContext *gb,
             int run_end = band_type_run_end[idx];
             if (band_type[idx] == ZERO_BT) {
                 for (; i < run_end; i++, idx++)
-                    sf[idx] = 0.;
+                    sf[idx] = 0.0;
             } else if ((band_type[idx] == INTENSITY_BT) ||
                        (band_type[idx] == INTENSITY_BT2)) {
                 for (; i < run_end; i++, idx++) {
@@ -1916,7 +1917,7 @@ static int decode_cce(AACContext *ac, GetBitContext *gb, ChannelElement *che)
         int idx  = 0;
         int cge  = 1;
         int gain = 0;
-        float gain_cache = 1.;
+        float gain_cache = 1.0;
         if (c) {
             cge = coup->coupling_point == AFTER_IMDCT ? 1 : get_bits1(gb);
             gain = cge ? get_vlc2(gb, vlc_scalefactors.table, 7, 3) - 60: 0;
@@ -2426,7 +2427,7 @@ static int parse_adts_frame_header(AACContext *ac, GetBitContext *gb)
     int size;
     AACADTSHeaderInfo hdr_info;
     uint8_t layout_map[MAX_ELEM_ID*4][3];
-    int layout_map_tags;
+    int layout_map_tags, ret;
 
     size = avpriv_aac_parse_header(gb, &hdr_info);
     if (size > 0) {
@@ -2438,12 +2439,15 @@ static int parse_adts_frame_header(AACContext *ac, GetBitContext *gb)
         push_output_configuration(ac);
         if (hdr_info.chan_config) {
             ac->oc[1].m4ac.chan_config = hdr_info.chan_config;
-            if (set_default_channel_config(ac->avctx, layout_map,
-                    &layout_map_tags, hdr_info.chan_config))
-                return -7;
-            if (output_configure(ac, layout_map, layout_map_tags,
-                                 FFMAX(ac->oc[1].status, OC_TRIAL_FRAME), 0))
-                return -7;
+            if ((ret = set_default_channel_config(ac->avctx,
+                                                  layout_map,
+                                                  &layout_map_tags,
+                                                  hdr_info.chan_config)) < 0)
+                return ret;
+            if ((ret = output_configure(ac, layout_map, layout_map_tags,
+                                        FFMAX(ac->oc[1].status,
+                                              OC_TRIAL_FRAME), 0)) < 0)
+                return ret;
         } else {
             ac->oc[1].m4ac.chan_config = 0;
         }
@@ -2474,22 +2478,19 @@ static int aac_decode_frame_int(AVCodecContext *avctx, void *data,
     ac->frame = data;
 
     if (show_bits(gb, 12) == 0xfff) {
-        if (parse_adts_frame_header(ac, gb) < 0) {
+        if ((err = parse_adts_frame_header(ac, gb)) < 0) {
             av_log(avctx, AV_LOG_ERROR, "Error decoding AAC frame header.\n");
-            err = -1;
             goto fail;
         }
         if (ac->oc[1].m4ac.sampling_index > 12) {
             av_log(ac->avctx, AV_LOG_ERROR, "invalid sampling rate index %d\n", ac->oc[1].m4ac.sampling_index);
-            err = -1;
+            err = AVERROR_INVALIDDATA;
             goto fail;
         }
     }
 
-    if (frame_configure_elements(avctx) < 0) {
-        err = -1;
+    if ((err = frame_configure_elements(avctx)) < 0)
         goto fail;
-    }
 
     ac->tags_mapped = 0;
     // parse
@@ -2500,7 +2501,7 @@ static int aac_decode_frame_int(AVCodecContext *avctx, void *data,
             if (!(che=get_che(ac, elem_type, elem_id))) {
                 av_log(ac->avctx, AV_LOG_ERROR, "channel element %d.%d is not allocated\n",
                        elem_type, elem_id);
-                err = -1;
+                err = AVERROR_INVALIDDATA;
                 goto fail;
             }
             samples = 1024;
@@ -2556,7 +2557,7 @@ static int aac_decode_frame_int(AVCodecContext *avctx, void *data,
                 elem_id += get_bits(gb, 8) - 1;
             if (get_bits_left(gb) < 8 * elem_id) {
                     av_log(avctx, AV_LOG_ERROR, overread_err);
-                    err = -1;
+                    err = AVERROR_INVALIDDATA;
                     goto fail;
             }
             while (elem_id > 0)
@@ -2565,7 +2566,7 @@ static int aac_decode_frame_int(AVCodecContext *avctx, void *data,
             break;
 
         default:
-            err = -1; /* should not happen, but keeps compiler happy */
+            err = AVERROR_BUG; /* should not happen, but keeps compiler happy */
             break;
         }
 
@@ -2577,7 +2578,7 @@ static int aac_decode_frame_int(AVCodecContext *avctx, void *data,
 
         if (get_bits_left(gb) < 3) {
             av_log(avctx, AV_LOG_ERROR, overread_err);
-            err = -1;
+            err = AVERROR_INVALIDDATA;
             goto fail;
         }
     }
@@ -2635,7 +2636,8 @@ static int aac_decode_frame(AVCodecContext *avctx, void *data,
         }
     }
 
-    init_get_bits(&gb, buf, buf_size * 8);
+    if ((err = init_get_bits(&gb, buf, buf_size * 8)) < 0)
+        return err;
 
     if ((err = aac_decode_frame_int(avctx, data, got_frame_ptr, &gb)) < 0)
         return err;
@@ -2878,7 +2880,8 @@ static int latm_decode_frame(AVCodecContext *avctx, void *out,
     int                 muxlength, err;
     GetBitContext       gb;
 
-    init_get_bits(&gb, avpkt->data, avpkt->size * 8);
+    if ((err = init_get_bits(&gb, avpkt->data, avpkt->size * 8)) < 0)
+        return err;
 
     // check for LOAS sync word
     if (get_bits(&gb, 11) != LOAS_SYNC_WORD)

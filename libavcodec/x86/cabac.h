@@ -265,7 +265,7 @@ static av_always_inline int get_cabac_bypass_x86(CABACContext *c)
           "i"(offsetof(CABACContext, bytestream_end)),
           "i"(offsetof(CABACContext, range))
         : "%eax", "%ecx", "memory"
-        );
+    );
     return res;
 }
 

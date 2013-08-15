@@ -136,7 +136,7 @@ library:
 @item Apple HTTP Live Streaming @tab   @tab X
 @item ASF                       @tab X @tab X
 @item AVI                       @tab X @tab X
-@item AVISynth                  @tab   @tab X
+@item AviSynth                  @tab   @tab X
 @item AVS                       @tab   @tab X
     @tab Multimedia format used by the Creature Shock game.
 @item Beam Software SIFF        @tab   @tab X
@@ -820,6 +820,8 @@ following image formats are supported:
 @item TwinVQ (VQF flavor)    @tab     @tab  X
 @item Vorbis                 @tab  E  @tab  X
     @tab A native but very primitive encoder exists.
+@item Voxware MetaSound      @tab     @tab  X
+    @tab imperfect and incomplete support
 @item WavPack                @tab  E  @tab  X
     @tab supported through external library libwavpack
 @item Westwood Audio (SND1)  @tab     @tab  X

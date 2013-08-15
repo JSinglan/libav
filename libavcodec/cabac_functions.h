@@ -132,6 +132,7 @@ static int av_noinline av_unused get_cabac_noinline(CABACContext *c, uint8_t * c
 static int av_unused get_cabac(CABACContext *c, uint8_t * const state){
     return get_cabac_inline(c,state);
 }
+
 #ifndef get_cabac_bypass
 static int av_unused get_cabac_bypass(CABACContext *c){
     int range;

@@ -90,7 +90,7 @@ int ffio_init_context(AVIOContext *s,
     s->must_flush      = 0;
     s->eof_reached     = 0;
     s->error           = 0;
-    s->seekable        = AVIO_SEEKABLE_NORMAL;
+    s->seekable        = seek ? AVIO_SEEKABLE_NORMAL : 0;
     s->max_packet_size = 0;
     s->update_checksum = NULL;
 
@@ -488,6 +488,18 @@ int avio_read(AVIOContext *s, unsigned char *buf, int size)
         if (s->eof_reached)   return AVERROR_EOF;
     }
     return size1 - size;
+}
+
+int ffio_read_indirect(AVIOContext *s, unsigned char *buf, int size, const unsigned char **data)
+{
+    if (s->buf_end - s->buf_ptr >= size && !s->write_flag) {
+        *data = s->buf_ptr;
+        s->buf_ptr += size;
+        return size;
+    } else {
+        *data = buf;
+        return avio_read(s, buf, size);
+    }
 }
 
 int ffio_read_partial(AVIOContext *s, unsigned char *buf, int size)

@@ -173,7 +173,7 @@ Individual component options:
   --disable-filters        disable all filters
 
 External library support:
-  --enable-avisynth        enable reading of AVISynth script files [no]
+  --enable-avisynth        enable reading of AviSynth script files [no]
   --enable-bzlib           enable bzlib [autodetect]
   --enable-frei0r          enable frei0r video filtering
   --enable-gnutls          enable gnutls [no]
@@ -1294,6 +1294,7 @@ HAVE_LIST="
     ibm_asm
     inet_aton
     io_h
+    inline_asm_labels
     isatty
     jack_port_get_latency_range
     ldbrx
@@ -1318,6 +1319,7 @@ HAVE_LIST="
     nanosleep
     poll_h
     posix_memalign
+    pragma_deprecated
     rdtsc
     sched_getaffinity
     sdl
@@ -1352,6 +1354,7 @@ HAVE_LIST="
     sys_select_h
     sys_soundcard_h
     sys_time_h
+    sys_un_h
     sys_videoio_h
     threads
     unistd_h
@@ -1387,6 +1390,8 @@ CONFIG_EXTRA="
     mpegvideoenc
     nettle
     rangecoder
+    riffdec
+    riffenc
     rtpdec
     rtpenc_chain
     sinewin
@@ -1558,7 +1563,7 @@ dnxhd_decoder_select="dsputil"
 dnxhd_encoder_select="aandcttables dsputil mpegvideoenc"
 dvvideo_decoder_select="dsputil"
 dvvideo_encoder_select="dsputil"
-dxa_decoder_select="zlib"
+dxa_decoder_deps="zlib"
 eac3_decoder_select="ac3_decoder"
 eac3_encoder_select="ac3_encoder"
 eamad_decoder_select="aandcttables dsputil mpegvideo"
@@ -1570,14 +1575,15 @@ ffvhuff_decoder_select="dsputil"
 ffvhuff_encoder_select="dsputil huffman"
 flac_decoder_select="golomb"
 flac_encoder_select="dsputil golomb lpc"
-flashsv_decoder_select="zlib"
-flashsv_encoder_select="zlib"
-flashsv2_decoder_select="zlib"
+flashsv_decoder_deps="zlib"
+flashsv_encoder_deps="zlib"
+flashsv2_decoder_deps="zlib"
 flv_decoder_select="h263_decoder"
 flv_encoder_select="h263_encoder"
 fourxm_decoder_select="dsputil"
 fraps_decoder_select="dsputil huffman"
-g2m_decoder_select="dsputil zlib"
+g2m_decoder_deps="zlib"
+g2m_decoder_select="dsputil"
 h261_decoder_select="error_resilience mpegvideo"
 h261_encoder_select="aandcttables mpegvideoenc"
 h263_decoder_select="error_resilience h263_parser mpegvideo"
@@ -1600,6 +1606,7 @@ lagarith_decoder_select="dsputil"
 ljpeg_encoder_select="aandcttables mpegvideoenc"
 loco_decoder_select="golomb"
 mdec_decoder_select="dsputil error_resilience mpegvideo"
+metasound_decoder_select="lsp mdct sinewin"
 mimic_decoder_select="dsputil hpeldsp"
 mjpeg_decoder_select="dsputil hpeldsp"
 mjpegb_decoder_select="dsputil hpeldsp"
@@ -1636,8 +1643,10 @@ mxpeg_decoder_select="dsputil hpeldsp"
 nellymoser_decoder_select="mdct sinewin"
 nellymoser_encoder_select="audio_frame_queue mdct sinewin"
 nuv_decoder_select="dsputil lzo"
-png_decoder_select="dsputil zlib"
-png_encoder_select="dsputil zlib"
+png_decoder_deps="zlib"
+png_decoder_select="dsputil"
+png_encoder_deps="zlib"
+png_encoder_select="dsputil"
 prores_decoder_select="dsputil"
 prores_encoder_select="dsputil"
 qcelp_decoder_select="lsp"
@@ -1665,7 +1674,7 @@ thp_decoder_select="dsputil hpeldsp"
 truehd_decoder_select="mlp_decoder"
 truemotion2_decoder_select="dsputil"
 truespeech_decoder_select="dsputil"
-tscc_decoder_select="zlib"
+tscc_decoder_deps="zlib"
 twinvq_decoder_select="mdct lsp sinewin"
 utvideo_decoder_select="dsputil"
 utvideo_encoder_select="dsputil huffman"
@@ -1692,11 +1701,11 @@ wmv2_decoder_select="h263_decoder videodsp"
 wmv2_encoder_select="h263_encoder"
 wmv3_decoder_select="vc1_decoder"
 wmv3image_decoder_select="wmv3_decoder"
-zerocodec_decoder_select="zlib"
-zlib_decoder_select="zlib"
-zlib_encoder_select="zlib"
-zmbv_decoder_select="zlib"
-zmbv_encoder_select="zlib"
+zerocodec_decoder_deps="zlib"
+zlib_decoder_deps="zlib"
+zlib_encoder_deps="zlib"
+zmbv_decoder_deps="zlib"
+zmbv_encoder_deps="zlib"
 
 # hardware accelerators
 dxva2_deps="dxva2api_h"
@@ -1715,14 +1724,8 @@ h264_vaapi_hwaccel_deps="vaapi"
 h264_vaapi_hwaccel_select="h264_decoder"
 h264_vda_hwaccel_deps="vda"
 h264_vda_hwaccel_select="h264_decoder"
-h264_vdpau_decoder_deps="vdpau"
-h264_vdpau_decoder_select="h264_decoder"
 h264_vdpau_hwaccel_deps="vdpau"
 h264_vdpau_hwaccel_select="h264_decoder"
-mpeg_vdpau_decoder_deps="vdpau"
-mpeg_vdpau_decoder_select="mpeg2video_decoder"
-mpeg1_vdpau_decoder_deps="vdpau"
-mpeg1_vdpau_decoder_select="mpeg1video_decoder"
 mpeg1_vdpau_hwaccel_deps="vdpau"
 mpeg1_vdpau_hwaccel_select="mpeg1video_decoder"
 mpeg2_dxva2_hwaccel_deps="dxva2"
@@ -1733,21 +1736,16 @@ mpeg2_vdpau_hwaccel_deps="vdpau"
 mpeg2_vdpau_hwaccel_select="mpeg2video_decoder"
 mpeg4_vaapi_hwaccel_deps="vaapi"
 mpeg4_vaapi_hwaccel_select="mpeg4_decoder"
-mpeg4_vdpau_decoder_deps="vdpau"
-mpeg4_vdpau_decoder_select="mpeg4_decoder"
 mpeg4_vdpau_hwaccel_deps="vdpau"
 mpeg4_vdpau_hwaccel_select="mpeg4_decoder"
 vc1_dxva2_hwaccel_deps="dxva2"
 vc1_dxva2_hwaccel_select="vc1_decoder"
 vc1_vaapi_hwaccel_deps="vaapi"
 vc1_vaapi_hwaccel_select="vc1_decoder"
-vc1_vdpau_decoder_deps="vdpau"
-vc1_vdpau_decoder_select="vc1_decoder"
 vc1_vdpau_hwaccel_deps="vdpau"
 vc1_vdpau_hwaccel_select="vc1_decoder"
 wmv3_dxva2_hwaccel_select="vc1_dxva2_hwaccel"
 wmv3_vaapi_hwaccel_select="vc1_vaapi_hwaccel"
-wmv3_vdpau_decoder_select="vc1_vdpau_decoder"
 wmv3_vdpau_hwaccel_select="vc1_vdpau_hwaccel"
 
 # parsers
@@ -1800,22 +1798,35 @@ libxvid_encoder_deps="libxvid"
 
 # demuxers / muxers
 ac3_demuxer_select="ac3_parser"
+asf_demuxer_select="riffdec"
+asf_muxer_select="riffenc"
 asf_stream_muxer_select="asf_muxer"
+avi_demuxer_select="riffdec"
+avi_muxer_select="riffenc"
 avisynth_demuxer_deps="avisynth"
+avisynth_demuxer_select="riffdec"
+caf_demuxer_select="riffdec"
 dirac_demuxer_select="dirac_parser"
+dxa_demuxer_select="riffdec"
 eac3_demuxer_select="ac3_parser"
 flac_demuxer_select="flac_parser"
 ipod_muxer_select="mov_muxer"
 ismv_muxer_select="mov_muxer"
 matroska_audio_muxer_select="matroska_muxer"
+matroska_demuxer_select="riffdec"
 matroska_demuxer_suggest="bzlib lzo zlib"
+matroska_muxer_select="riffenc"
+mmf_muxer_select="riffenc"
+mov_demuxer_select="riffdec"
 mov_demuxer_suggest="zlib"
-mov_muxer_select="rtpenc_chain"
+mov_muxer_select="riffenc rtpenc_chain"
 mp3_demuxer_select="mpegaudio_parser"
 mp4_muxer_select="mov_muxer"
 mpegts_muxer_select="adts_muxer latm_muxer"
 mpegtsraw_demuxer_select="mpegts_demuxer"
 mxf_d10_muxer_select="mxf_muxer"
+nut_muxer_select="riffenc"
+nuv_demuxer_select="riffdec"
 ogg_demuxer_select="golomb"
 psp_muxer_select="mov_muxer"
 rtp_demuxer_select="sdp_demuxer"
@@ -1830,13 +1841,20 @@ spdif_muxer_select="aac_parser"
 tak_demuxer_select="tak_parser"
 tg2_muxer_select="mov_muxer"
 tgp_muxer_select="mov_muxer"
-w64_demuxer_deps="wav_demuxer"
+w64_demuxer_select="wav_demuxer"
+wav_demuxer_select="riffdec"
+wav_muxer_select="riffenc"
+webm_muxer_select="riffenc"
+wtv_demuxer_select="riffdec"
+xmv_demuxer_select="riffdec"
+xwma_demuxer_select="riffdec"
 
 # indevs / outdevs
 alsa_indev_deps="alsa_asoundlib_h snd_pcm_htimestamp"
 alsa_outdev_deps="alsa_asoundlib_h"
 bktr_indev_deps_any="dev_bktr_ioctl_bt848_h machine_ioctl_bt848_h dev_video_bktr_ioctl_bt848_h dev_ic_bt8xx_h"
-dv1394_indev_deps="dv1394 dv_demuxer"
+dv1394_indev_deps="dv1394"
+dv1394_indev_select="dv_demuxer"
 fbdev_indev_deps="linux_fb_h"
 jack_indev_deps="jack_jack_h pthreads"
 libcdio_indev_deps="libcdio"
@@ -1884,6 +1902,8 @@ tcp_protocol_select="network"
 tls_protocol_deps_any="openssl gnutls"
 tls_protocol_select="tcp_protocol"
 udp_protocol_select="network"
+unix_protocol_deps="sys_un_h"
+unix_protocol_select="network"
 
 # filters
 blackframe_filter_deps="gpl"
@@ -1918,7 +1938,8 @@ avconv_select="aformat_filter anull_filter asyncts_filter atrim_filter format_fi
 avplay_deps="avcodec avformat avresample swscale sdl"
 avplay_select="rdft"
 avprobe_deps="avcodec avformat"
-avserver_deps="avformat ffm_muxer fork rtp_protocol rtsp_demuxer !shared"
+avserver_deps="avformat fork !shared"
+avserver_select="ffm_muxer rtp_protocol rtsp_demuxer"
 avserver_extralibs='$ldl'
 
 doc_deps="texi2html"
@@ -1974,7 +1995,6 @@ enable dxva2 vdpau
 
 # build settings
 SHFLAGS='-shared -Wl,-soname,$$(@F)'
-AVSERVERLDFLAGS=-Wl,-E
 LIBPREF="lib"
 LIBSUF=".a"
 FULLNAME='$(NAME)$(BUILDSUF)'
@@ -2708,6 +2728,9 @@ if $ar 2>&1 | grep -q Microsoft; then
 elif $ar 2>&1 | grep -q 'Texas Instruments'; then
     arflags="rq"
     ar_o='$@'
+elif $ar 2>&1 | grep -q 'Usage: ar.*-X.*any'; then
+    arflags='-Xany -r -c'
+    ar_o='$@'
 else
     arflags="rc"
     ar_o='$@'
@@ -3050,13 +3073,17 @@ enabled spic && enable_weak pic
 
 # OS specific
 case $target_os in
+    aix)
+        SHFLAGS=-shared
+        add_cppflags '-I\$(SRC_PATH)/compat/aix'
+        enabled shared && add_ldflags -Wl,-brtl
+        ;;
     haiku)
         prefix_default="/boot/common"
         network_extralibs="-lnetwork"
         host_libs=
         ;;
     sunos)
-        AVSERVERLDFLAGS=""
         SHFLAGS='-shared -Wl,-h,$$(@F)'
         enabled x86 && SHFLAGS="-mimpure-text $SHFLAGS"
         network_extralibs="-lsocket -lnsl"
@@ -3101,7 +3128,6 @@ case $target_os in
         SLIBSUF=".dylib"
         SLIBNAME_WITH_VERSION='$(SLIBPREF)$(FULLNAME).$(LIBVERSION)$(SLIBSUF)'
         SLIBNAME_WITH_MAJOR='$(SLIBPREF)$(FULLNAME).$(LIBMAJOR)$(SLIBSUF)'
-        AVSERVERLDFLAGS=-Wl,-bind_at_load
         objformat="macho"
         enabled x86_64 && objformat="macho64"
         enabled_any pic shared ||
@@ -3193,7 +3219,6 @@ case $target_os in
         add_cppflags -D_GNU_SOURCE
         add_ldflags -Zomf -Zbin-files -Zargs-wild -Zmap
         SHFLAGS='$(SUBDIR)$(NAME).def -Zdll -Zomf'
-        AVSERVERLDFLAGS=""
         LIBSUF="_s.a"
         SLIBPREF=""
         SLIBSUF=".dll"
@@ -3233,7 +3258,6 @@ case $target_os in
         ;;
     osf1)
         add_cppflags -D_OSF_SOURCE -D_POSIX_PII -D_REENTRANT
-        AVSERVERLDFLAGS=
         ;;
     minix)
         ;;
@@ -3390,6 +3414,10 @@ void foo(char * $restrict_keyword p);
 EOF
 done
 
+check_cc <<EOF && enable pragma_deprecated
+void foo(void) { _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"") }
+EOF
+
 check_cc <<EOF && enable attribute_packed
 struct { int x; } __attribute__((packed)) x;
 EOF
@@ -3402,6 +3430,8 @@ check_cc <<EOF || die "endian test failed"
 unsigned int endian = 'B' << 24 | 'I' << 16 | 'G' << 8 | 'E';
 EOF
 od -t x1 $TMPO | grep -q '42 *49 *47 *45' && enable bigendian
+
+check_inline_asm inline_asm_labels '"1:\n"'
 
 if enabled alpha; then
 
@@ -3658,6 +3688,7 @@ check_header sys/param.h
 check_header sys/resource.h
 check_header sys/select.h
 check_header sys/time.h
+check_header sys/un.h
 check_header unistd.h
 check_header vdpau/vdpau.h
 check_header vdpau/vdpau_x11.h
@@ -3967,6 +3998,7 @@ elif enabled pathscale; then
 elif enabled_any msvc icl; then
     enabled x86_32 && disable aligned_stack
     enabled_all x86_32 debug && add_cflags -Oy-
+    enabled debug && add_ldflags -debug
     if enabled icl; then
         # basically -fstrict-aliasing that does not work (correctly) on icl 13.x
         check_cpp_condition "windows.h" "__ICL < 1300" && add_cflags -Qansi-alias
@@ -4124,7 +4156,6 @@ LD_LIB=$LD_LIB
 LD_PATH=$LD_PATH
 DLLTOOL=$dlltool
 LDFLAGS=$LDFLAGS
-LDFLAGS-avserver=$AVSERVERLDFLAGS
 SHFLAGS=$(echo $($ldflags_filter $SHFLAGS))
 YASMFLAGS=$YASMFLAGS
 BUILDSUF=$build_suffix

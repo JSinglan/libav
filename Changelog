@@ -25,6 +25,14 @@ version 10:
 - support for WavPack muxing (raw and in Matroska)
 - Go2Webinar decoder
 - WavPack encoding through libwavpack
+- Added the -n parameter to avconv
+- RTMP seek support
+- when transcoding with avconv (i.e. not streamcopying), -ss is now accurate
+  even when used as an input option. Previous behavior can be restored with
+  the -noaccurate_seek option.
+- avconv -t option can now be used for inputs, to limit the duration of
+  data read from an input file
+- incomplete Voxware MetaSound decoder
 
 
 version 9:
@@ -479,7 +487,7 @@ version 0.5:
 - MXF demuxer
 - VC-1/WMV3/WMV9 video decoder
 - MacIntel support
-- AVISynth support
+- AviSynth support
 - VMware video decoder
 - VP5 video decoder
 - VP6 video decoder

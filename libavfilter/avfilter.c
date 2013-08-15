@@ -23,6 +23,7 @@
 #include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "libavutil/imgutils.h"
+#include "libavutil/internal.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
 #include "libavutil/rational.h"
@@ -354,7 +355,7 @@ static const AVClass *filter_child_class_next(const AVClass *prev)
 
 #define OFFSET(x) offsetof(AVFilterContext, x)
 #define FLAGS AV_OPT_FLAG_VIDEO_PARAM
-static const AVOption options[] = {
+static const AVOption avfilter_options[] = {
     { "thread_type", "Allowed thread types", OFFSET(thread_type), AV_OPT_TYPE_FLAGS,
         { .i64 = AVFILTER_THREAD_SLICE }, 0, INT_MAX, FLAGS, "thread_type" },
         { "slice", NULL, 0, AV_OPT_TYPE_CONST, { .i64 = AVFILTER_THREAD_SLICE }, .unit = "thread_type" },
@@ -367,7 +368,7 @@ static const AVClass avfilter_class = {
     .version    = LIBAVUTIL_VERSION_INT,
     .child_next = filter_child_next,
     .child_class_next = filter_child_class_next,
-    .option           = options,
+    .option           = avfilter_options,
 };
 
 static int default_execute(AVFilterContext *ctx, action_func *func, void *arg,
@@ -436,8 +437,10 @@ AVFilterContext *ff_filter_alloc(const AVFilter *filter, const char *inst_name)
             goto err;
     }
 #if FF_API_FOO_COUNT
+FF_DISABLE_DEPRECATION_WARNINGS
     ret->output_count = ret->nb_outputs;
     ret->input_count  = ret->nb_inputs;
+FF_ENABLE_DEPRECATION_WARNINGS
 #endif
 
     return ret;
