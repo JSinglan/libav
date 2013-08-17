@@ -1289,9 +1289,9 @@ static int hls_pcm_sample(HEVCContext *s, int x0, int y0, int log2_cb_size)
     int stride0 = sc->frame->linesize[0];
     uint8_t *dst0 = &sc->frame->data[0][y0 * stride0 + (x0 << sc->sps->pixel_shift)];
     int stride1 = sc->frame->linesize[1];
-    uint8_t *dst1 = &sc->frame->data[1][(y0 >> sc->sps->vshift[1]) * stride1 + (x0 >> sc->sps->hshift[1] << sc->sps->pixel_shift)];
+    uint8_t *dst1 = &sc->frame->data[1][(y0 >> sc->sps->vshift[1]) * stride1 + ((x0 >> sc->sps->hshift[1]) << sc->sps->pixel_shift)];
     int stride2 = sc->frame->linesize[2];
-    uint8_t *dst2 = &sc->frame->data[2][(y0 >> sc->sps->vshift[2]) * stride2 + (x0 >> sc->sps->hshift[2] << sc->sps->pixel_shift)];
+    uint8_t *dst2 = &sc->frame->data[2][(y0 >> sc->sps->vshift[2]) * stride2 + ((x0 >> sc->sps->hshift[2]) << sc->sps->pixel_shift)];
 
     int length = cb_size * cb_size * 3 / 2 * sc->sps->pcm.bit_depth;
     const uint8_t *pcm = skip_bytes(s->HEVClc->cc, length >> 3);
@@ -2489,19 +2489,20 @@ static void print_md5(int poc, uint8_t md5[3][16])
 }
 #endif
 
-static void calc_md5(uint8_t *md5, uint8_t* src, int stride, int width, int height)
+static void calc_md5(uint8_t *md5, uint8_t* src, int stride, int width, int height, int pixel_shift)
 {
     uint8_t *buf;
     int y, x;
-    buf = av_malloc(width * height);
+    int stride_buf = width << pixel_shift;
+    buf = av_malloc(stride_buf * height);
 
     for (y = 0; y < height; y++) {
-        for (x = 0; x < width; x++)
-            buf[y * width + x] = src[x];
+        for (x = 0; x < stride_buf; x++)
+            buf[y * stride_buf + x] = src[x];
 
         src += stride;
     }
-    av_md5_sum(md5, buf, width * height);
+    av_md5_sum(md5, buf, stride_buf * height);
     av_free(buf);
 }
 
@@ -2824,9 +2825,9 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
         int cIdx;
         uint8_t md5[3][16];
 
-        calc_md5(md5[0], frame->data[0], frame->linesize[0], frame->width  , frame->height  );
-        calc_md5(md5[1], frame->data[1], frame->linesize[1], frame->width/2, frame->height/2);
-        calc_md5(md5[2], frame->data[2], frame->linesize[2], frame->width/2, frame->height/2);
+        calc_md5(md5[0], frame->data[0], frame->linesize[0], frame->width  , frame->height  , sc->sps->pixel_shift);
+        calc_md5(md5[1], frame->data[1], frame->linesize[1], frame->width/2, frame->height/2, sc->sps->pixel_shift);
+        calc_md5(md5[2], frame->data[2], frame->linesize[2], frame->width/2, frame->height/2, sc->sps->pixel_shift);
         if (s->HEVCsc->is_md5) {
             for( cIdx = 0; cIdx < 3/*((s->sps->chroma_format_idc == 0) ? 1 : 3)*/; cIdx++ ) {
                 if (!compare_md5(md5[cIdx], s->HEVCsc->md5[cIdx])) {
