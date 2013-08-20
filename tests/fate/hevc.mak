@@ -6,7 +6,9 @@ FATE_HEVC = cainit_a_sharp_3        \
             cainit_f_sharp_2        \
             cainit_g_sharp_2        \
             cainit_h_sharp_2        \
+            cip_a_panasonic_3       \
             cip_b_nec_2             \
+            cip_c_panasonic_2       \
             dslice_a_hhi_5          \
             dslice_b_hhi_5          \
             dslice_c_hhi_5          \
@@ -19,6 +21,8 @@ FATE_HEVC = cainit_a_sharp_3        \
             ipred_a_docomo_2        \
             ipred_b_nokia_2         \
             ipred_c_mitsubishi_2    \
+            ls_a_orange_2           \
+            ls_b_orange_3           \
             maxbins_a_ti_3          \
             maxbins_b_ti_3          \
             maxbins_c_ti_3          \
@@ -37,10 +41,12 @@ FATE_HEVC = cainit_a_sharp_3        \
             pmerge_c_ti_2           \
             pmerge_d_ti_2           \
             pmerge_e_ti_2           \
+            pps_a_qualcomm_7        \
             ps_a_vidyo_2            \
             ps_b_vidyo_2            \
             rap_a_docomo_3          \
             rplm_a_qualcomm_4       \
+            rplm_b_qualcomm_4       \
             rps_b_qualcomm_4        \
             rps_c_ericsson_3        \
             rps_d_ericsson_3        \
@@ -56,6 +62,7 @@ FATE_HEVC = cainit_a_sharp_3        \
             sao_b_mediatek_3        \
             sao_c_samsung           \
             sao_d_samsung           \
+            sdh_a_orange_3          \
             tscl_a_vidyo_3          \
             tscl_b_vidyo_3          \
             tskip_a_ms_2            \
@@ -83,7 +90,9 @@ fate-hevc-conformance-cainit_e_sharp_2:      CMD = explode -decode-checksum 1 -i
 fate-hevc-conformance-cainit_f_sharp_2:      CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/CAINIT_F_SHARP_2.bit
 fate-hevc-conformance-cainit_g_sharp_2:      CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/CAINIT_G_SHARP_2.bit
 fate-hevc-conformance-cainit_h_sharp_2:      CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/CAINIT_H_SHARP_2.bit
+fate-hevc-conformance-sao_d_samsung:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/CIP_A_Panasonic_3.bit
 fate-hevc-conformance-cip_b_nec_2:           CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/cip_B_NEC_2.bit
+fate-hevc-conformance-sao_d_samsung:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/CIP_C_Panasonic_2.bit
 fate-hevc-conformance-dslice_a_hhi_5:        CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/DSLICE_A_HHI_5.bin
 fate-hevc-conformance-dslice_b_hhi_5:        CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/DSLICE_B_HHI_5.bin
 fate-hevc-conformance-dslice_c_hhi_5:        CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/DSLICE_C_HHI_5.bin
@@ -96,6 +105,8 @@ fate-hevc-conformance-ipcm_b_nec_2:          CMD = explode -decode-checksum 1 -i
 fate-hevc-conformance-ipred_a_docomo_2:      CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/IPRED_A_docomo_2.bit
 fate-hevc-conformance-ipred_b_nokia_2:       CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/IPRED_B_Nokia_2.bit
 fate-hevc-conformance-ipred_c_mitsubishi_2:  CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/IPRED_C_Mitsubishi_2.bit
+fate-hevc-conformance-sao_d_samsung:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/LS_A_Orange_2.bit
+fate-hevc-conformance-sao_d_samsung:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/LS_B_ORANGE_3.bit
 fate-hevc-conformance-maxbins_a_ti_3:        CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/MAXBINS_A_TI_3.bit
 fate-hevc-conformance-maxbins_b_ti_3:        CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/MAXBINS_B_TI_3.bit
 fate-hevc-conformance-maxbins_c_ti_3:        CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/MAXBINS_C_TI_3.bit
@@ -114,10 +125,12 @@ fate-hevc-conformance-pmerge_b_ti_2:         CMD = explode -decode-checksum 1 -i
 fate-hevc-conformance-pmerge_c_ti_2:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/PMERGE_C_TI_2.bit
 fate-hevc-conformance-pmerge_d_ti_2:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/PMERGE_D_TI_2.bit
 fate-hevc-conformance-pmerge_e_ti_2:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/PMERGE_E_TI_2.bit
+fate-hevc-conformance-sao_d_samsung:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/PPS_A_qualcomm_7.bit
 fate-hevc-conformance-ps_a_vidyo_2:          CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/PS_A_VIDYO_2.bit
 fate-hevc-conformance-ps_b_vidyo_2:          CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/PS_B_VIDYO_2.bit
 fate-hevc-conformance-rap_a_docomo_3:        CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/RAP_A_docomo_3.bit
 fate-hevc-conformance-rplm_a_qualcomm_4:     CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/RPLM_A_qualcomm_4.bit
+fate-hevc-conformance-sao_d_samsung:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/RPLM_B_qualcomm_4.bit
 fate-hevc-conformance-rps_b_qualcomm_4:      CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/RPS_B_qualcomm_4.bit
 fate-hevc-conformance-rps_c_ericsson_3:      CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/RPS_C_ericsson_3.bit
 fate-hevc-conformance-rps_d_ericsson_3:      CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/RPS_D_ericsson_3.bit
@@ -133,6 +146,7 @@ fate-hevc-conformance-sao_a_mediatek_3:      CMD = explode -decode-checksum 1 -i
 fate-hevc-conformance-sao_b_mediatek_3:      CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/SAO_B_MediaTek_3.bit
 fate-hevc-conformance-sao_c_samsung:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/SAO_C_Samsung.bit
 fate-hevc-conformance-sao_d_samsung:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/SAO_D_Samsung.bit
+fate-hevc-conformance-sao_d_samsung:         CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/SDH_A_Orange_3.bit
 fate-hevc-conformance-tscl_a_vidyo_3:        CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/TSCL_A_VIDYO_3.bit
 fate-hevc-conformance-tscl_b_vidyo_3:        CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/TSCL_B_VIDYO_3.bit
 fate-hevc-conformance-tskip_a_ms_2:          CMD = explode -decode-checksum 1 -i $(TARGET_SAMPLES)/hevc-conformance/TSKIP_A_MS_2.bit
