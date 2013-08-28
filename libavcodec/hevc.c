@@ -1869,6 +1869,8 @@ static int hls_coding_unit(HEVCContext *s, int x0, int y0, int log2_cb_size)
     }
     if (sc->pps->transquant_bypass_enable_flag)
         lc->cu.cu_transquant_bypass_flag = ff_hevc_cu_transquant_bypass_flag_decode(s);
+    else
+        lc->cu.cu_transquant_bypass_flag = 0;
 
     if (sc->sh.slice_type != I_SLICE) {
         uint8_t skip_flag = ff_hevc_skip_flag_decode(s, x0, y0, x_cb, y_cb);
@@ -2582,7 +2584,7 @@ static int decode_nal_unit(HEVCContext *s, const uint8_t *nal, int length)
             }
         }
 
-        if (sc->nal_unit_type == NAL_RASL_R && sc->poc <= sc->max_ra) {
+        if ((sc->nal_unit_type == NAL_RASL_R || sc->nal_unit_type == NAL_RASL_N) && sc->poc <= sc->max_ra) {
             sc->is_decoded = 0;
             break;
         } else {
