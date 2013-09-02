@@ -101,7 +101,7 @@ typedef struct LongTermRPS {
 typedef struct RefPicList {
     int list[16];
     int idx[16];
-    int isLongTerm[16];
+    int is_long_term[16];
     int numPic;
 } RefPicList;
 
@@ -714,6 +714,7 @@ typedef struct HEVCFrame {
     MvField *tab_mvf;
     RefPicList *refPicList;
     RefPicListTab **refPicListTab;
+    int count; 
     /**
      * A combination of HEVC_FRAME_FLAG_*
      */

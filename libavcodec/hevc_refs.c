@@ -45,8 +45,7 @@ int ff_hevc_find_ref_idx(HEVCContext *s, int poc)
 void ff_hevc_free_refPicListTab(HEVCContext *s, HEVCFrame *ref)
 {
     int j;
-    HEVCSharedContext *sc = s->HEVCsc;
-    int ctb_count = sc->sps->pic_width_in_ctbs * sc->sps->pic_height_in_ctbs;
+    int ctb_count = ref->count;
     for (j = ctb_count-1; j > 0; j--) {
         if (ref->refPicListTab[j] != ref->refPicListTab[j-1])
             av_free(ref->refPicListTab[j]);
@@ -57,6 +56,7 @@ void ff_hevc_free_refPicListTab(HEVCContext *s, HEVCFrame *ref)
         ref->refPicListTab[0] = NULL;
     }
     ref->refPicList = NULL;
+    ref->count = 0;
 }
 static void malloc_refPicListTab(HEVCContext *s)
 {
@@ -65,6 +65,7 @@ static void malloc_refPicListTab(HEVCContext *s)
     HEVCFrame *ref  = &sc->DPB[ff_hevc_find_next_ref(s, sc->poc)];
     int ctb_count   = sc->sps->pic_width_in_ctbs * sc->sps->pic_height_in_ctbs;
     int ctb_addr_ts = sc->pps->ctb_addr_rs_to_ts[sc->sh.slice_address];
+    ref->count = ctb_count;
     ref->refPicListTab[ctb_addr_ts] = av_mallocz(sizeof(RefPicListTab));
     for (i = ctb_addr_ts; i < ctb_count-1; i++)
         ref->refPicListTab[i+1] = ref->refPicListTab[i];
@@ -279,19 +280,19 @@ static void set_ref_pic_list(HEVCContext *s)
         for(i = 0; i < refPocList[first_list].numPic; i++) {
             refPicListTmp[list_idx].list[cIdx] = refPocList[first_list].list[i];
             refPicListTmp[list_idx].idx[cIdx]  = refPocList[first_list].idx[i];
-            refPicListTmp[list_idx].isLongTerm[cIdx]  = 0;
+            refPicListTmp[list_idx].is_long_term[cIdx]  = 0;
             cIdx++;
         }
         for(i = 0; i < refPocList[sec_list].numPic; i++) {
             refPicListTmp[list_idx].list[cIdx] = refPocList[sec_list].list[i];
             refPicListTmp[list_idx].idx[cIdx]  = refPocList[sec_list].idx[i];
-            refPicListTmp[list_idx].isLongTerm[cIdx]  = 0;
+            refPicListTmp[list_idx].is_long_term[cIdx]  = 0;
             cIdx++;
         }
         for(i = 0; i < refPocList[LT_CURR].numPic; i++) {
             refPicListTmp[list_idx].list[cIdx] = refPocList[LT_CURR].list[i];
             refPicListTmp[list_idx].idx[cIdx]  = refPocList[LT_CURR].idx[i];
-            refPicListTmp[list_idx].isLongTerm[cIdx]  = 1;
+            refPicListTmp[list_idx].is_long_term[cIdx]  = 1;
             cIdx++;
         }
         refPicList[list_idx].numPic = num_rps_curr_lx;
@@ -299,13 +300,13 @@ static void set_ref_pic_list(HEVCContext *s)
             for(i = 0; i < num_rps_curr_lx; i++) {
                 refPicList[list_idx].list[i] = refPicListTmp[list_idx].list[sh->list_entry_lx[list_idx][ i ]];
                 refPicList[list_idx].idx[i]  = refPicListTmp[list_idx].idx[sh->list_entry_lx[list_idx][ i ]];
-                refPicList[list_idx].isLongTerm[i]  = refPicListTmp[list_idx].isLongTerm[sh->list_entry_lx[list_idx][ i ]];
+                refPicList[list_idx].is_long_term[i]  = refPicListTmp[list_idx].is_long_term[sh->list_entry_lx[list_idx][ i ]];
             }
         } else {
             for(i = 0; i < num_rps_curr_lx; i++) {
                 refPicList[list_idx].list[i] = refPicListTmp[list_idx].list[i];
                 refPicList[list_idx].idx[i]  = refPicListTmp[list_idx].idx[i];
-                refPicList[list_idx].isLongTerm[i]  = refPicListTmp[list_idx].isLongTerm[i];
+                refPicList[list_idx].is_long_term[i]  = refPicListTmp[list_idx].is_long_term[i];
             }
         }
     }
