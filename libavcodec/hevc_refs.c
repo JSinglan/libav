@@ -296,6 +296,8 @@ static void set_ref_pic_list(HEVCContext *s)
         }
         refPicList[list_idx].numPic = num_rps_curr_lx;
         if (sc->sh.ref_pic_list_modification_flag_lx[list_idx] == 1) {
+            num_rps_curr_lx = num_ref_idx_lx_act[list_idx];
+            refPicList[list_idx].numPic = num_rps_curr_lx;
             for(i = 0; i < num_rps_curr_lx; i++) {
                 refPicList[list_idx].list[i] = refPicListTmp[list_idx].list[sh->list_entry_lx[list_idx][ i ]];
                 refPicList[list_idx].idx[i]  = refPicListTmp[list_idx].idx[sh->list_entry_lx[list_idx][ i ]];
