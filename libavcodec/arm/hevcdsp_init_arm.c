@@ -24,12 +24,12 @@
 #include "libavutil/arm/cpu.h"
 #include "libavcodec/hevcdsp.h"
 
-void ff_hevc_put_unweighted_pred_arm(uint8_t *_dst, ptrdiff_t _dststride,
+void ff_hevc_put_unweighted_pred_8_arm(uint8_t *_dst, ptrdiff_t _dststride,
         int16_t *src, ptrdiff_t srcstride, int width, int height);
 
 static av_cold void h264dsp_init_neon(HEVCDSPContext *c, const int bit_depth)
 {
-    c->put_unweighted_pred = ff_hevc_put_unweighted_pred_arm;
+    c->put_unweighted_pred = ff_hevc_put_unweighted_pred_8_arm;
 }
 
 av_cold void ff_hevcdsp_init_arm(HEVCDSPContext *c, const int bit_depth)

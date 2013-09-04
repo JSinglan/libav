@@ -30,7 +30,10 @@
 
 #define BIT_DEPTH 8
 
-void ff_hevc_put_unweighted_pred_arm(uint8_t *_dst, ptrdiff_t _dststride,
+void ff_hevc_put_unweighted_pred_8_arm(uint8_t *_dst, ptrdiff_t _dststride,
+        int16_t *src, ptrdiff_t srcstride, int width, int height);
+
+void ff_hevc_put_unweighted_pred_8_arm(uint8_t *_dst, ptrdiff_t _dststride,
         int16_t *src, ptrdiff_t srcstride, int width, int height) {
     int x, y;
     uint8_t *dst = (uint8_t*) _dst;
