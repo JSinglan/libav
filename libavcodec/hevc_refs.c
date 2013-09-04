@@ -89,28 +89,6 @@ static void update_refs(HEVCContext *s)
     }
 }
 
-void ff_hevc_clear_refs(HEVCContext *s)
-{
-    int i;
-    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
-        HEVCFrame *ref = &s->DPB[i];
-        if (!(ref->flags & HEVC_FRAME_FLAG_OUTPUT)) {
-            av_frame_unref(ref->frame);
-            ref->flags = 0;
-            ff_hevc_free_refPicListTab(s, ref);
-        }
-    }
-}
-
-void ff_hevc_clean_refs(HEVCContext *s)
-{
-    int i;
-    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
-        HEVCFrame *ref = &s->DPB[i];
-        av_frame_unref(ref->frame);
-        ref->flags = 0;
-    }
-}
 
 static int find_next_ref(HEVCContext *s, int poc)
 {
@@ -156,6 +134,30 @@ RefPicList* ff_hevc_get_ref_list(HEVCContext *s, int short_ref_idx, int x0, int 
         return (RefPicList*) ref->refPicListTab[ctb_addr_ts];
     }
 }
+
+void ff_hevc_clear_refs(HEVCContext *s)
+{
+    int i;
+    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
+        HEVCFrame *ref = &s->DPB[i];
+        if (!(ref->flags & HEVC_FRAME_FLAG_OUTPUT)) {
+            av_frame_unref(ref->frame);
+            ref->flags = 0;
+            ff_hevc_free_refPicListTab(s, ref);
+        }
+    }
+}
+
+void ff_hevc_clean_refs(HEVCContext *s)
+{
+    int i;
+    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
+        HEVCFrame *ref = &s->DPB[i];
+        av_frame_unref(ref->frame);
+        ref->flags = 0;
+    }
+}
+
 int ff_hevc_set_new_ref(HEVCContext *s, AVFrame **frame, int poc)
 {
     int i;
@@ -223,28 +225,27 @@ int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
     return 0;
 }
 
-void ff_hevc_compute_poc(HEVCContext *s, int poc_lsb)
+int ff_hevc_compute_poc(HEVCContext *s, int poc_lsb)
 {
-    
-    int iMaxPOClsb  = 1 << s->sps->log2_max_poc_lsb;
-    int iPrevPOClsb = s->pocTid0 % iMaxPOClsb;
-    int iPrevPOCmsb = s->pocTid0 - iPrevPOClsb;
-    int iPOCmsb;
-    if ((poc_lsb < iPrevPOClsb) && ((iPrevPOClsb - poc_lsb) >= (iMaxPOClsb / 2))) {
-        iPOCmsb = iPrevPOCmsb + iMaxPOClsb;
-    } else if ((poc_lsb > iPrevPOClsb) && ((poc_lsb - iPrevPOClsb) > (iMaxPOClsb / 2))) {
-        iPOCmsb = iPrevPOCmsb - iMaxPOClsb;
-    } else {
-        iPOCmsb = iPrevPOCmsb;
-    }
+    int max_poc_lsb  = 1 << s->sps->log2_max_poc_lsb;
+    int prev_poc_lsb = s->pocTid0 % max_poc_lsb;
+    int prev_poc_msb = s->pocTid0 - prev_poc_lsb;
+    int poc_msb;
+
+    if ((poc_lsb < prev_poc_lsb) && ((prev_poc_lsb - poc_lsb) >= max_poc_lsb / 2))
+        poc_msb = prev_poc_msb + max_poc_lsb;
+    else if ((poc_lsb > prev_poc_lsb) && ((poc_lsb - prev_poc_lsb) > (max_poc_lsb / 2)))
+        poc_msb = prev_poc_msb - max_poc_lsb;
+    else
+        poc_msb = prev_poc_msb;
+
+    // For BLA picture types, POCmsb is set to 0.
     if (s->nal_unit_type == NAL_BLA_W_LP ||
         s->nal_unit_type == NAL_BLA_W_RADL ||
-        s->nal_unit_type == NAL_BLA_N_LP) {
-        // For BLA picture types, POCmsb is set to 0.
-        iPOCmsb = 0;
-    }
+        s->nal_unit_type == NAL_BLA_N_LP)
+        poc_msb = 0;
 
-    s->poc = iPOCmsb + poc_lsb;
+    return poc_msb + poc_lsb;
 }
 
 static void set_ref_pic_list(HEVCContext *s)

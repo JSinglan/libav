@@ -36,8 +36,8 @@
 #include "hevc.h"
 
 const uint8_t ff_hevc_qpel_extra_before[4] = { 0, 3, 3, 2 };
-const uint8_t ff_hevc_qpel_extra_after[4] = { 0, 3, 4, 4 };
-const uint8_t ff_hevc_qpel_extra[4] = { 0, 6, 7, 6 };
+const uint8_t ff_hevc_qpel_extra_after[4]  = { 0, 3, 4, 4 };
+const uint8_t ff_hevc_qpel_extra[4]        = { 0, 6, 7, 6 };
 
 static const uint8_t scan_1x1[1] = {
     0,
@@ -110,7 +110,6 @@ static const uint8_t diag_scan8x2_y[16] = {
     0, 1, 0, 1,
     0, 1, 0, 1,
 };
-
 
 static const uint8_t diag_scan8x2_inv[2][8] = {
     { 0, 2, 4, 6, 8, 10, 12, 14, },
@@ -222,26 +221,28 @@ static const uint8_t diag_scan8x8_inv[8][8] = {
  */
 //#define POC_DISPLAY_MD5
 #define WPP1
+
+/* free everything allocated  by pic_arrays_init() */
 static void pic_arrays_free(HEVCContext *s)
 {
     int i;
+
     av_freep(&s->sao);
     av_freep(&s->deblock);
-
     av_freep(&s->split_cu_flag);
-    av_freep(&s->skip_flag);
 
+    av_freep(&s->skip_flag);
     av_freep(&s->tab_ct_depth);
 
     av_freep(&s->tab_ipm);
-    av_freep(&s->tab_slice_address);
-    av_freep(&s->horizontal_bs);
-    av_freep(&s->vertical_bs);
-
     av_freep(&s->cbf_luma);
     av_freep(&s->is_pcm);
 
     av_freep(&s->qp_y_tab);
+    av_freep(&s->tab_slice_address);
+
+    av_freep(&s->horizontal_bs);
+    av_freep(&s->vertical_bs);
 
     av_freep(&s->sh.entry_point_offset);
     av_freep(&s->sh.size);
@@ -249,39 +250,43 @@ static void pic_arrays_free(HEVCContext *s)
 
     for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
         av_freep(&s->DPB[i].tab_mvf);
-        if (s->DPB[i].refPicListTab != NULL) {
-            ff_hevc_free_refPicListTab(s, &s->DPB[i]);
-            av_freep(&s->DPB[i].refPicListTab);
-        }
+        ff_hevc_free_refPicListTab(s, &s->DPB[i]);
+        av_freep(&s->DPB[i].refPicListTab);
     }
 }
 
+/* allocate arrays that depend on frame dimensions */
 static int pic_arrays_init(HEVCContext *s)
 {
-    int i;
-    int pic_size = s->sps->pic_width_in_luma_samples * s->sps->pic_height_in_luma_samples;
-    int pic_size_in_ctb = pic_size >> (s->sps->log2_min_coding_block_size << 1);
-    int ctb_count = s->sps->pic_width_in_ctbs * s->sps->pic_height_in_ctbs;
-    int pic_width_in_min_pu = s->sps->pic_width_in_luma_samples >> s->sps->log2_min_pu_size;
+    int pic_size             = s->sps->pic_width_in_luma_samples * s->sps->pic_height_in_luma_samples;
+    int pic_size_in_ctb      = pic_size >> (s->sps->log2_min_coding_block_size << 1);
+    int ctb_count            = s->sps->pic_width_in_ctbs * s->sps->pic_height_in_ctbs;
+    int pic_width_in_min_pu  = s->sps->pic_width_in_luma_samples  >> s->sps->log2_min_pu_size;
     int pic_height_in_min_pu = s->sps->pic_height_in_luma_samples >> s->sps->log2_min_pu_size;
+    int pic_size_in_min_pu   = pic_width_in_min_pu * pic_height_in_min_pu;
     int pic_width_in_min_tu = s->sps->pic_width_in_luma_samples >> s->sps->log2_min_transform_block_size;
     int pic_height_in_min_tu = s->sps->pic_height_in_luma_samples >> s->sps->log2_min_transform_block_size;
+    int i;
 
-    s->bs_width = s->sps->pic_width_in_luma_samples >> 3;
+    s->bs_width  = s->sps->pic_width_in_luma_samples  >> 3;
     s->bs_height = s->sps->pic_height_in_luma_samples >> 3;
-    s->sao = av_mallocz(ctb_count * sizeof(*s->sao));
-    s->deblock = av_mallocz(ctb_count * sizeof(DBParams));
+
+    s->sao           = av_mallocz_array(ctb_count, sizeof(*s->sao));
+    s->deblock       = av_mallocz_array(ctb_count, sizeof(*s->deblock));
     s->split_cu_flag = av_malloc(pic_size);
     if (!s->sao || !s->deblock || !s->split_cu_flag)
         goto fail;
 
-    s->skip_flag = av_malloc(pic_size_in_ctb);
-    s->tab_ct_depth = av_malloc(s->sps->pic_height_in_min_cbs * s->sps->pic_width_in_min_cbs);
+    s->skip_flag    = av_malloc(pic_size_in_ctb);
+    s->tab_ct_depth = av_malloc(s->sps->pic_height_in_min_cbs *
+                                s->sps->pic_width_in_min_cbs);
     if (!s->skip_flag || !s->tab_ct_depth)
         goto fail;
 
-    s->tab_ipm = av_malloc(pic_height_in_min_pu * pic_width_in_min_pu);
-    if (!s->tab_ipm)
+    s->tab_ipm  = av_malloc(pic_size_in_min_pu);
+    s->cbf_luma = av_malloc(pic_width_in_min_tu * pic_height_in_min_tu);
+    s->is_pcm   = av_malloc(pic_size_in_min_pu);
+    if (!s->tab_ipm || !s->cbf_luma || !s->is_pcm)
         goto fail;
 
     s->tab_slice_address = av_malloc(pic_size_in_ctb *
@@ -289,37 +294,34 @@ static int pic_arrays_init(HEVCContext *s)
     if (!s->tab_slice_address)
         goto fail;
 
-    s->cbf_luma = av_malloc(pic_width_in_min_tu * pic_height_in_min_tu);
-    s->is_pcm = av_malloc(pic_width_in_min_pu * pic_height_in_min_pu);
-    if (!s->cbf_luma || !s->is_pcm)
-        goto fail;
 
-    s->qp_y_tab = av_malloc(pic_size_in_ctb * sizeof(int8_t));
+    s->qp_y_tab = av_malloc(pic_size_in_ctb * sizeof(*s->qp_y_tab));
     if (!s->qp_y_tab)
         goto fail;
-
-    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
-        s->DPB[i].tab_mvf = av_malloc(pic_width_in_min_pu  *
-                                       pic_height_in_min_pu *
-                                       sizeof(*s->DPB[i].tab_mvf));
-        if (!s->DPB[i].tab_mvf)
-            goto fail;
-        s->DPB[i].refPicListTab = av_mallocz(ctb_count * sizeof(RefPicListTab**));
-        if (!s->DPB[i].refPicListTab)
-            goto fail;
-    }
 
     s->horizontal_bs = av_mallocz(2 * s->bs_width * s->bs_height);
     s->vertical_bs   = av_mallocz(2 * s->bs_width * s->bs_height);
     if (!s->horizontal_bs || !s->vertical_bs)
         goto fail;
+
+    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
+        HEVCFrame *f = &s->DPB[i];
+        f->tab_mvf = av_malloc_array(pic_size_in_min_pu, sizeof(*f->tab_mvf));
+        if (!f->tab_mvf)
+            goto fail;
+
+        f->refPicListTab = av_mallocz_array(ctb_count, sizeof(*f->refPicListTab));
+        if (!f->refPicListTab)
+            goto fail;
+    }
+
     return 0;
 fail:
     pic_arrays_free(s);
     return AVERROR(ENOMEM);
 }
 
-static void pred_weight_table(HEVCContext *sc, GetBitContext *gb)
+static void pred_weight_table(HEVCContext *s, GetBitContext *gb)
 {
     int i = 0;
     int j = 0;
@@ -329,84 +331,84 @@ static void pred_weight_table(HEVCContext *sc, GetBitContext *gb)
     uint8_t luma_weight_l1_flag[16];
     uint8_t chroma_weight_l1_flag[16];
 
-    sc->sh.luma_log2_weight_denom = get_ue_golomb(gb);
-    if (sc->sps->chroma_format_idc != 0) {
+    s->sh.luma_log2_weight_denom = get_ue_golomb(gb);
+    if (s->sps->chroma_format_idc != 0) {
         delta_chroma_log2_weight_denom = get_se_golomb(gb);
-        sc->sh.chroma_log2_weight_denom = av_clip_c(sc->sh.luma_log2_weight_denom + delta_chroma_log2_weight_denom, 0, 7);
+        s->sh.chroma_log2_weight_denom = av_clip_c(s->sh.luma_log2_weight_denom + delta_chroma_log2_weight_denom, 0, 7);
     }
-    for (i = 0; i < sc->sh.num_ref_idx_l0_active; i++) {
+    for (i = 0; i < s->sh.num_ref_idx_l0_active; i++) {
         luma_weight_l0_flag[i] = get_bits1(gb);
         if (!luma_weight_l0_flag[i]) {
-            sc->sh.luma_weight_l0[i] = 1 << sc->sh.luma_log2_weight_denom;
-            sc->sh.luma_offset_l0[i] = 0;
+            s->sh.luma_weight_l0[i] = 1 << s->sh.luma_log2_weight_denom;
+            s->sh.luma_offset_l0[i] = 0;
         }
     }
-    if (sc->sps->chroma_format_idc != 0) { //fix me ! invert "if" and "for"
-        for (i = 0; i < sc->sh.num_ref_idx_l0_active; i++) {
+    if (s->sps->chroma_format_idc != 0) { //fix me ! invert "if" and "for"
+        for (i = 0; i < s->sh.num_ref_idx_l0_active; i++) {
             chroma_weight_l0_flag[i] = get_bits1(gb);
         }
     } else {
-        for (i = 0; i < sc->sh.num_ref_idx_l0_active; i++) {
+        for (i = 0; i < s->sh.num_ref_idx_l0_active; i++) {
             chroma_weight_l0_flag[i] = 0;
         }
     }
-    for (i = 0; i < sc->sh.num_ref_idx_l0_active; i++) {
+    for (i = 0; i < s->sh.num_ref_idx_l0_active; i++) {
         if (luma_weight_l0_flag[i]) {
             int delta_luma_weight_l0 = get_se_golomb(gb);
-            sc->sh.luma_weight_l0[i] = (1 << sc->sh.luma_log2_weight_denom) + delta_luma_weight_l0;
-            sc->sh.luma_offset_l0[i] = get_se_golomb(gb);
+            s->sh.luma_weight_l0[i] = (1 << s->sh.luma_log2_weight_denom) + delta_luma_weight_l0;
+            s->sh.luma_offset_l0[i] = get_se_golomb(gb);
         }
         if (chroma_weight_l0_flag[i]) {
             for (j = 0; j < 2; j++) {
                 int delta_chroma_weight_l0 = get_se_golomb(gb);
                 int delta_chroma_offset_l0 = get_se_golomb(gb);
-                sc->sh.chroma_weight_l0[i][j] = (1 << sc->sh.chroma_log2_weight_denom) + delta_chroma_weight_l0;
-                sc->sh.chroma_offset_l0[i][j] = av_clip_c((delta_chroma_offset_l0 - ((128 * sc->sh.chroma_weight_l0[i][j])
-                                                                                     >> sc->sh.chroma_log2_weight_denom) + 128), -128, 127);
+                s->sh.chroma_weight_l0[i][j] = (1 << s->sh.chroma_log2_weight_denom) + delta_chroma_weight_l0;
+                s->sh.chroma_offset_l0[i][j] = av_clip_c((delta_chroma_offset_l0 - ((128 * s->sh.chroma_weight_l0[i][j])
+                                                                                     >> s->sh.chroma_log2_weight_denom) + 128), -128, 127);
             }
         } else {
-            sc->sh.chroma_weight_l0[i][0] = 1 << sc->sh.chroma_log2_weight_denom;
-            sc->sh.chroma_offset_l0[i][0] = 0;
-            sc->sh.chroma_weight_l0[i][1] = 1 << sc->sh.chroma_log2_weight_denom;
-            sc->sh.chroma_offset_l0[i][1] = 0;
+            s->sh.chroma_weight_l0[i][0] = 1 << s->sh.chroma_log2_weight_denom;
+            s->sh.chroma_offset_l0[i][0] = 0;
+            s->sh.chroma_weight_l0[i][1] = 1 << s->sh.chroma_log2_weight_denom;
+            s->sh.chroma_offset_l0[i][1] = 0;
         }
     }
-    if (sc->sh.slice_type == B_SLICE) {
-        for (i = 0; i < sc->sh.num_ref_idx_l1_active; i++) {
+    if (s->sh.slice_type == B_SLICE) {
+        for (i = 0; i < s->sh.num_ref_idx_l1_active; i++) {
             luma_weight_l1_flag[i] = get_bits1(gb);
             if (!luma_weight_l1_flag[i]) {
-                sc->sh.luma_weight_l1[i] = 1 << sc->sh.luma_log2_weight_denom;
-                sc->sh.luma_offset_l1[i] = 0;
+                s->sh.luma_weight_l1[i] = 1 << s->sh.luma_log2_weight_denom;
+                s->sh.luma_offset_l1[i] = 0;
             }
         }
-        if (sc->sps->chroma_format_idc != 0) {
-            for (i = 0; i < sc->sh.num_ref_idx_l1_active; i++) {
+        if (s->sps->chroma_format_idc != 0) {
+            for (i = 0; i < s->sh.num_ref_idx_l1_active; i++) {
                 chroma_weight_l1_flag[i] = get_bits1(gb);
             }
         } else {
-            for (i = 0; i < sc->sh.num_ref_idx_l1_active; i++) {
+            for (i = 0; i < s->sh.num_ref_idx_l1_active; i++) {
                 chroma_weight_l1_flag[i] = 0;
             }
         }
-        for (i = 0; i < sc->sh.num_ref_idx_l1_active; i++) {
+        for (i = 0; i < s->sh.num_ref_idx_l1_active; i++) {
             if (luma_weight_l1_flag[i]) {
                 int delta_luma_weight_l1 = get_se_golomb(gb);
-                sc->sh.luma_weight_l1[i] = (1 << sc->sh.luma_log2_weight_denom) + delta_luma_weight_l1;
-                sc->sh.luma_offset_l1[i] = get_se_golomb(gb);
+                s->sh.luma_weight_l1[i] = (1 << s->sh.luma_log2_weight_denom) + delta_luma_weight_l1;
+                s->sh.luma_offset_l1[i] = get_se_golomb(gb);
             }
             if (chroma_weight_l1_flag[i]) {
                 for (j = 0; j < 2; j++) {
                     int delta_chroma_weight_l1 = get_se_golomb(gb);
                     int delta_chroma_offset_l1 = get_se_golomb(gb);
-                    sc->sh.chroma_weight_l1[i][j] = (1 << sc->sh.chroma_log2_weight_denom) + delta_chroma_weight_l1;
-                    sc->sh.chroma_offset_l1[i][j] = av_clip_c((delta_chroma_offset_l1 - ((128 * sc->sh.chroma_weight_l1[i][j])
-                                                                                         >> sc->sh.chroma_log2_weight_denom) + 128), -128, 127);
+                    s->sh.chroma_weight_l1[i][j] = (1 << s->sh.chroma_log2_weight_denom) + delta_chroma_weight_l1;
+                    s->sh.chroma_offset_l1[i][j] = av_clip_c((delta_chroma_offset_l1 - ((128 * s->sh.chroma_weight_l1[i][j])
+                                                                                         >> s->sh.chroma_log2_weight_denom) + 128), -128, 127);
                 }
             } else {
-                sc->sh.chroma_weight_l1[i][0] = 1 << sc->sh.chroma_log2_weight_denom;
-                sc->sh.chroma_offset_l1[i][0] = 0;
-                sc->sh.chroma_weight_l1[i][1] = 1 << sc->sh.chroma_log2_weight_denom;
-                sc->sh.chroma_offset_l1[i][1] = 0;
+                s->sh.chroma_weight_l1[i][0] = 1 << s->sh.chroma_log2_weight_denom;
+                s->sh.chroma_offset_l1[i][0] = 0;
+                s->sh.chroma_weight_l1[i][1] = 1 << s->sh.chroma_log2_weight_denom;
+                s->sh.chroma_offset_l1[i][1] = 0;
             }
         }
     }
@@ -414,10 +416,10 @@ static void pred_weight_table(HEVCContext *sc, GetBitContext *gb)
 
 static int hls_slice_header(HEVCContext *s)
 {
-    int i, ret, j;
     GetBitContext *gb = s->HEVClc->gb;
-    SliceHeader *sh = &s->sh;
+    SliceHeader   *sh = &s->sh;
     int slice_address_length = 0;
+    int i, ret, j;
 
     // Coded parameters
     sh->first_slice_in_pic_flag = get_bits1(gb);
@@ -438,24 +440,27 @@ static int hls_slice_header(HEVCContext *s)
         return AVERROR_INVALIDDATA;
     }
     s->pps = s->pps_list[sh->pps_id];
+
     if (s->sps != s->sps_list[s->pps->sps_id]) {
         const AVPixFmtDescriptor *desc;
 
         s->sps = s->sps_list[s->pps->sps_id];
         s->vps = s->vps_list[s->sps->vps_id];
 
-        //TODO: Handle switching between different SPS better
+        // TODO: Handle switching between different SPS better
+        // TODO: handle pix fmt changes and cropping
         if (s->width  != s->sps->pic_width_in_luma_samples ||
             s->height != s->sps->pic_height_in_luma_samples) {
             pic_arrays_free(s);
             ret = pic_arrays_init(s);
-            s->width = s->sps->pic_width_in_luma_samples;
+            s->width  = s->sps->pic_width_in_luma_samples;
             s->height = s->sps->pic_height_in_luma_samples;
             if (ret < 0)
                 return AVERROR(ENOMEM);
         }
-        s->avctx->width = s->sps->pic_width_in_luma_samples;
+        s->avctx->width  = s->sps->pic_width_in_luma_samples;
         s->avctx->height = s->sps->pic_height_in_luma_samples;
+
         if (s->sps->chroma_format_idc == 0 || s->sps->separate_colour_plane_flag) {
             av_log(s->avctx, AV_LOG_ERROR,
                    "TODO: s->sps->chroma_format_idc == 0 || "
@@ -492,9 +497,9 @@ static int hls_slice_header(HEVCContext *s)
 
         s->sps->pixel_shift = s->sps->bit_depth > 8;
 
-        ff_hevc_pred_init(&s->hpc, s->sps->bit_depth);
-        ff_hevc_dsp_init(&s->hevcdsp, s->sps->bit_depth);
-        ff_videodsp_init(&s->vdsp, s->sps->bit_depth);
+        ff_hevc_pred_init(&s->hpc,     s->sps->bit_depth);
+        ff_hevc_dsp_init (&s->hevcdsp, s->sps->bit_depth);
+        ff_videodsp_init (&s->vdsp,    s->sps->bit_depth);
     }
     if (s->nal_unit_type == NAL_IDR_W_RADL && sh->first_slice_in_pic_flag) {
         ff_hevc_clear_refs(s);
@@ -518,13 +523,24 @@ static int hls_slice_header(HEVCContext *s)
         if (s->pps->output_flag_present_flag)
             sh->pic_output_flag = get_bits1(gb);
 
-        if (s->sps->separate_colour_plane_flag == 1)
+        if (s->sps->separate_colour_plane_flag)
             sh->colour_plane_id = get_bits(gb, 2);
 
         if (s->nal_unit_type != NAL_IDR_W_RADL && s->nal_unit_type != NAL_IDR_N_LP) {
             int short_term_ref_pic_set_sps_flag;
+            int poc;
+
             sh->pic_order_cnt_lsb = get_bits(gb, s->sps->log2_max_poc_lsb);
-            ff_hevc_compute_poc(s, sh->pic_order_cnt_lsb);
+            poc = ff_hevc_compute_poc(s, sh->pic_order_cnt_lsb);
+            if (!sh->first_slice_in_pic_flag && poc != s->poc) {
+                av_log(s->avctx, AV_LOG_WARNING,
+                       "POC changed between slices: %d -> %d\n", s->poc, poc);
+                if (s->avctx->err_recognition & AV_EF_EXPLODE)
+                    return AVERROR_INVALIDDATA;
+                poc = s->poc;
+            }
+            s->poc = poc;
+
             short_term_ref_pic_set_sps_flag = get_bits1(gb);
             if (!short_term_ref_pic_set_sps_flag) {
                 ff_hevc_decode_short_term_rps(s->HEVClc, s->sps->num_short_term_ref_pic_sets, s->sps);
@@ -532,30 +548,37 @@ static int hls_slice_header(HEVCContext *s)
             } else {
                 int numbits = 0;
                 int short_term_ref_pic_set_idx;
+
                 while ((1 << numbits) < s->sps->num_short_term_ref_pic_sets)
                     numbits++;
                 if (numbits > 0)
                     short_term_ref_pic_set_idx = get_bits(gb, numbits);
                 else
                     short_term_ref_pic_set_idx = 0;
+
                 sh->short_term_rps = &s->sps->short_term_rps_list[short_term_ref_pic_set_idx];
             }
-            sh->long_term_rps.num_long_term_sps = 0;
+
+            sh->long_term_rps.num_long_term_sps  = 0;
             sh->long_term_rps.num_long_term_pics = 0;
             if (s->sps->long_term_ref_pics_present_flag) {
-                int prevDeltaMSB = 0;
+                int prev_delta_msb = 0;
+
                 if (s->sps->num_long_term_ref_pics_sps > 0)
                     sh->long_term_rps.num_long_term_sps = get_ue_golomb(gb);
                 sh->long_term_rps.num_long_term_pics = get_ue_golomb(gb);
+
                 for (i = 0; i < sh->long_term_rps.num_long_term_sps + sh->long_term_rps.num_long_term_pics; i++) {
                     if (i < sh->long_term_rps.num_long_term_sps) {
                         uint8_t lt_idx_sps = 0;
+
                         if (s->sps->num_long_term_ref_pics_sps > 1)
                             lt_idx_sps = get_bits(gb, av_ceil_log2_c( s->sps->num_long_term_ref_pics_sps));
-                        sh->long_term_rps.PocLsbLt[i] = s->sps->lt_ref_pic_poc_lsb_sps[lt_idx_sps];
+
+                        sh->long_term_rps.PocLsbLt[i]        = s->sps->lt_ref_pic_poc_lsb_sps[lt_idx_sps];
                         sh->long_term_rps.UsedByCurrPicLt[i] = s->sps->used_by_curr_pic_lt_sps_flag[lt_idx_sps];
                     } else {
-                        sh->long_term_rps.PocLsbLt[i] = get_bits(gb, s->sps->log2_max_poc_lsb);
+                        sh->long_term_rps.PocLsbLt[i]        = get_bits(gb, s->sps->log2_max_poc_lsb);
                         sh->long_term_rps.UsedByCurrPicLt[i] = get_bits1(gb);
                     }
                     sh->long_term_rps.delta_poc_msb_present_flag[i] = get_bits1(gb);
@@ -563,11 +586,12 @@ static int hls_slice_header(HEVCContext *s)
                         if (i == 0 || i == sh->long_term_rps.num_long_term_sps)
                             sh->long_term_rps.DeltaPocMsbCycleLt[i] = get_ue_golomb(gb);
                         else
-                            sh->long_term_rps.DeltaPocMsbCycleLt[i] = get_ue_golomb(gb) + prevDeltaMSB;
-                        prevDeltaMSB = sh->long_term_rps.DeltaPocMsbCycleLt[i];
+                            sh->long_term_rps.DeltaPocMsbCycleLt[i] = get_ue_golomb(gb) + prev_delta_msb;
+                        prev_delta_msb = sh->long_term_rps.DeltaPocMsbCycleLt[i];
                     }
                 }
             }
+
             if (s->sps->sps_temporal_mvp_enabled_flag)
                 sh->slice_temporal_mvp_enabled_flag = get_bits1(gb);
             else
@@ -576,6 +600,7 @@ static int hls_slice_header(HEVCContext *s)
             s->sh.short_term_rps = NULL;
             s->poc = 0;
         }
+
         if (s->temporal_id == 0 &&
             s->nal_unit_type != NAL_TRAIL_N &&
             s->nal_unit_type != NAL_TSA_N &&
@@ -600,71 +625,80 @@ static int hls_slice_header(HEVCContext *s)
         sh->num_ref_idx_l0_active = 0;
         sh->num_ref_idx_l1_active = 0;
         if (sh->slice_type == P_SLICE || sh->slice_type == B_SLICE) {
-            int NumPocTotalCurr;
+            int num_poc_total_curr;
+
             sh->num_ref_idx_l0_active = s->pps->num_ref_idx_l0_default_active;
             if (sh->slice_type == B_SLICE)
                 sh->num_ref_idx_l1_active = s->pps->num_ref_idx_l1_default_active;
-            sh->num_ref_idx_active_override_flag = get_bits1(gb);
 
+            sh->num_ref_idx_active_override_flag = get_bits1(gb);
             if (sh->num_ref_idx_active_override_flag) {
                 sh->num_ref_idx_l0_active = get_ue_golomb(gb) + 1;
                 if (sh->slice_type == B_SLICE)
                     sh->num_ref_idx_l1_active = get_ue_golomb(gb) + 1;
             }
+
             sh->ref_pic_list_modification_flag_lx[0] = 0;
             sh->ref_pic_list_modification_flag_lx[1] = 0;
-            NumPocTotalCurr = ff_hevc_get_NumPocTotalCurr(s);
-            if (s->pps->lists_modification_present_flag && NumPocTotalCurr > 1) {
+            num_poc_total_curr = ff_hevc_get_NumPocTotalCurr(s);
+            if (s->pps->lists_modification_present_flag && num_poc_total_curr > 1) {
                 sh->ref_pic_list_modification_flag_lx[0] = get_bits1(gb);
-                if (sh->ref_pic_list_modification_flag_lx[0] == 1)
+                if (sh->ref_pic_list_modification_flag_lx[0]) {
                     for (i = 0; i < sh->num_ref_idx_l0_active; i++)
-                        sh->list_entry_lx[0][i] = get_bits(gb, av_ceil_log2_c(NumPocTotalCurr));
+                        sh->list_entry_lx[0][i] = get_bits(gb, av_ceil_log2_c(num_poc_total_curr));
+                }
+
                 if (sh->slice_type == B_SLICE) {
                     sh->ref_pic_list_modification_flag_lx[1] = get_bits1(gb);
                     if (sh->ref_pic_list_modification_flag_lx[1] == 1)
                         for (i = 0; i < sh->num_ref_idx_l1_active; i++)
-                            sh->list_entry_lx[1][i] = get_bits(gb, av_ceil_log2_c(NumPocTotalCurr));
+                            sh->list_entry_lx[1][i] = get_bits(gb, av_ceil_log2_c(num_poc_total_curr));
                 }
             }
 
             if (sh->slice_type == B_SLICE)
                 sh->mvd_l1_zero_flag = get_bits1(gb);
 
-            if (s->pps->cabac_init_present_flag) {
+            if (s->pps->cabac_init_present_flag)
                 sh->cabac_init_flag = get_bits1(gb);
-            }
+
             sh->collocated_ref_idx = 0;
             if (sh->slice_temporal_mvp_enabled_flag) {
                 sh->collocated_from_l0_flag = 1;
-                if (sh->slice_type == B_SLICE) {
+                if (sh->slice_type == B_SLICE)
                     sh->collocated_from_l0_flag = get_bits1(gb);
-                }
-                if ((sh->collocated_from_l0_flag && sh->num_ref_idx_l0_active > 1) ||
+
+                if (( sh->collocated_from_l0_flag && sh->num_ref_idx_l0_active > 1) ||
                     (!sh->collocated_from_l0_flag && sh->num_ref_idx_l1_active > 1)) {
                     sh->collocated_ref_idx = get_ue_golomb(gb);
                 }
             }
-            if ((s->pps->weighted_pred_flag && sh->slice_type == P_SLICE) ||
+
+            if ((s->pps->weighted_pred_flag   && sh->slice_type == P_SLICE) ||
                 (s->pps->weighted_bipred_flag && sh->slice_type == B_SLICE)) {
                 pred_weight_table(s, gb);
             }
 
             sh->max_num_merge_cand = 5 - get_ue_golomb(gb);
         }
+
         sh->slice_qp_delta = get_se_golomb(gb);
         if (s->pps->pic_slice_level_chroma_qp_offsets_present_flag) {
             sh->slice_cb_qp_offset = get_se_golomb(gb);
             sh->slice_cr_qp_offset = get_se_golomb(gb);
         }
+
         if (s->pps->deblocking_filter_control_present_flag) {
             int deblocking_filter_override_flag = 0;
+
             if (s->pps->deblocking_filter_override_enabled_flag)
                 deblocking_filter_override_flag = get_bits1(gb);
+
             if (deblocking_filter_override_flag) {
                 sh->disable_deblocking_filter_flag = get_bits1(gb);
                 if (!sh->disable_deblocking_filter_flag) {
                     sh->beta_offset = get_se_golomb(gb) * 2;
-                    sh->tc_offset = get_se_golomb(gb) * 2;
+                    sh->tc_offset   = get_se_golomb(gb) * 2;
                 }
             } else {
                 sh->disable_deblocking_filter_flag = s->pps->pps_disable_deblocking_filter_flag;
@@ -677,9 +711,9 @@ static int hls_slice_header(HEVCContext *s)
         }
 
         if (s->pps->seq_loop_filter_across_slices_enabled_flag &&
-           (sh->slice_sample_adaptive_offset_flag[0] ||
-            sh->slice_sample_adaptive_offset_flag[1] ||
-            !sh->disable_deblocking_filter_flag)) {
+            (sh->slice_sample_adaptive_offset_flag[0] ||
+             sh->slice_sample_adaptive_offset_flag[1] ||
+             !sh->disable_deblocking_filter_flag)) {
             sh->slice_loop_filter_across_slices_enabled_flag = get_bits1(gb);
         } else {
             sh->slice_loop_filter_across_slices_enabled_flag = s->pps->seq_loop_filter_across_slices_enabled_flag;
@@ -731,27 +765,27 @@ static int hls_slice_header(HEVCContext *s)
     }
 
     // Inferred parameters
-
     sh->slice_qp = 26 + s->pps->pic_init_qp_minus26 + sh->slice_qp_delta;
     sh->slice_ctb_addr_rs = sh->slice_address;
-    sh->slice_cb_addr_zs = sh->slice_address <<
-                           (s->sps->log2_diff_max_min_coding_block_size << 1);
+    sh->slice_cb_addr_zs  = sh->slice_address <<
+                            (s->sps->log2_diff_max_min_coding_block_size << 1);
 
     return 0;
 }
 
 #define CTB(tab, x, y) ((tab)[(y) * s->sps->pic_width_in_ctbs + (x)])
 
-#define set_sao(elem, value)                            \
-    if (!sao_merge_up_flag && !sao_merge_left_flag) {   \
+#define SET_SAO(elem, value)                            \
+do {                                                    \
+    if (!sao_merge_up_flag && !sao_merge_left_flag)     \
         sao->elem = value;                              \
-    } else if (sao_merge_left_flag) {                   \
+    else if (sao_merge_left_flag)                       \
         sao->elem = CTB(s->sao, rx-1, ry).elem;         \
-    } else if (sao_merge_up_flag) {                     \
+    else if (sao_merge_up_flag)                         \
         sao->elem = CTB(s->sao, rx, ry-1).elem;         \
-    } else {                                            \
+    else                                                \
         sao->elem = 0;                                  \
-    }
+} while (0)
 
 static int hls_sao_param(HEVCContext *s, int rx, int ry)
 {
@@ -781,26 +815,26 @@ static int hls_sao_param(HEVCContext *s, int rx, int ry)
             sao->type_idx[2] = sao->type_idx[1];
             sao->eo_class[2] = sao->eo_class[1];
         } else {
-            set_sao(type_idx[c_idx], ff_hevc_sao_type_idx_decode(s));
+            SET_SAO(type_idx[c_idx], ff_hevc_sao_type_idx_decode(s));
         }
 
         if (sao->type_idx[c_idx] == SAO_NOT_APPLIED)
             continue;
 
         for (i = 0; i < 4; i++)
-            set_sao(offset_abs[c_idx][i], ff_hevc_sao_offset_abs_decode(s));
+            SET_SAO(offset_abs[c_idx][i], ff_hevc_sao_offset_abs_decode(s));
 
         if (sao->type_idx[c_idx] == SAO_BAND) {
             for (i = 0; i < 4; i++) {
                 if (sao->offset_abs[c_idx][i]) {
-                    set_sao(offset_sign[c_idx][i], ff_hevc_sao_offset_sign_decode(s));
+                    SET_SAO(offset_sign[c_idx][i], ff_hevc_sao_offset_sign_decode(s));
                 } else {
                     sao->offset_sign[c_idx][i] = 0;
                 }
             }
-            set_sao(band_position[c_idx], ff_hevc_sao_band_position_decode(s));
+            SET_SAO(band_position[c_idx], ff_hevc_sao_band_position_decode(s));
         } else if (c_idx != 2) {
-            set_sao(eo_class[c_idx], ff_hevc_sao_eo_class_decode(s));
+            SET_SAO(eo_class[c_idx], ff_hevc_sao_eo_class_decode(s));
         }
 
         // Inferred parameters
