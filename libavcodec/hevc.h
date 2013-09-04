@@ -32,7 +32,7 @@
 #include "hevcdsp.h"
 
 #define MAX_DPB_SIZE 16 // A.4.1
-#define MAX_THREADS 16
+#define MAX_NB_THREADS 16
 
 /**
  * Value of the luma sample at position (x, y) in the 2D array tab.
@@ -764,7 +764,7 @@ typedef struct HEVCThreadContext {
     CodingTree ct;
     CodingUnit cu;
     PredictionUnit pu;
-    int16_t* BufferMC;
+    int16_t* mc_buffer;
     Filter_data *save_boundary_strengths;
     int nb_saved;
 } HEVCThreadContext;
@@ -773,10 +773,10 @@ typedef struct HEVCContext {
     AVClass *c;  // needed by private avoptions
     AVCodecContext      *avctx;
 
-    struct HEVCContext  *sList[MAX_THREADS];
+    struct HEVCContext  *sList[MAX_NB_THREADS];
 
 
-    HEVCThreadContext    *HEVClcList[MAX_THREADS];
+    HEVCThreadContext    *HEVClcList[MAX_NB_THREADS];
     HEVCThreadContext    *HEVClc;
 
     uint8_t *cabac_state; //
@@ -790,7 +790,7 @@ typedef struct HEVCContext {
     VPS *vps_list[MAX_VPS_COUNT];
     SPS *sps_list[MAX_SPS_COUNT];
     PPS *pps_list[MAX_PPS_COUNT];
-    
+
     SliceHeader sh;
     SAOParams *sao;
     DBParams *deblock;
@@ -827,8 +827,8 @@ typedef struct HEVCContext {
     uint8_t *tab_ct_depth;
     // PU
     uint8_t *tab_ipm;
-    
-    
+
+
     uint8_t *cbf_luma; // cbf_luma of colocated TU
     uint8_t *is_pcm;
 
