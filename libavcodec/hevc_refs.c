@@ -71,13 +71,14 @@ void ff_hevc_free_refPicListTab(HEVCContext *s, HEVCFrame *ref)
 static void update_refs(HEVCContext *s)
 {
     int i, j;
-
     int used[FF_ARRAY_ELEMS(s->DPB)] = { 0 };
+
     for (i = 0; i < 5; i++) {
         RefPicList *rpl = &s->sh.refPocList[i];
         for (j = 0; j < rpl->numPic; j++)
             used[rpl->idx[j]] = 1;
     }
+
     for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
         HEVCFrame *ref = &s->DPB[i];
         if (ref->frame->buf[0] && !used[i])
@@ -89,10 +90,10 @@ static void update_refs(HEVCContext *s)
     }
 }
 
-
 static int find_next_ref(HEVCContext *s, int poc)
 {
     int i;
+
     if (!s->sh.first_slice_in_pic_flag)
         return ff_hevc_find_ref_idx(s, poc);
 
@@ -108,12 +109,14 @@ static int find_next_ref(HEVCContext *s, int poc)
            "could not free room for POC %d\n", poc);
     return -1;
 }
+
 static void malloc_refPicListTab(HEVCContext *s)
 {
     int i;
     HEVCFrame *ref  = &s->DPB[find_next_ref(s, s->poc)];
     int ctb_count   = s->sps->pic_width_in_ctbs * s->sps->pic_height_in_ctbs;
     int ctb_addr_ts = s->pps->ctb_addr_rs_to_ts[s->sh.slice_address];
+
     ref->count = ctb_count;
     ref->refPicListTab[ctb_addr_ts] = av_mallocz(sizeof(RefPicListTab));
     for (i = ctb_addr_ts; i < ctb_count-1; i++)
@@ -383,7 +386,8 @@ void ff_hevc_set_ref_poc_list(HEVCContext *s)
     }
 }
 
-int ff_hevc_get_NumPocTotalCurr(HEVCContext *s) {
+int ff_hevc_get_NumPocTotalCurr(HEVCContext *s)
+{
     int ret = 0;
     int i;
     ShortTermRPS *rps     = s->sh.short_term_rps;

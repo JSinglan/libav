@@ -231,6 +231,7 @@ static int derive_temporal_colocated_mvs(HEVCContext *s, MvField temp_col,
     }
     return availableFlagLXCol;
 }
+
 /*
  * 8.5.3.1.7  temporal luma motion vector prediction
  */
