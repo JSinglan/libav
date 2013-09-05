@@ -806,8 +806,10 @@ static void hls_sao_param(HEVCContext *s, int rx, int ry)
     }
 
     for (c_idx = 0; c_idx < 3; c_idx++) {
-        if (!s->sh.slice_sample_adaptive_offset_flag[c_idx])
+        if (!s->sh.slice_sample_adaptive_offset_flag[c_idx]) {
+            sao->type_idx[c_idx] = SAO_NOT_APPLIED;
             continue;
+        }
 
         if (c_idx == 2) {
             sao->type_idx[2] = sao->type_idx[1];

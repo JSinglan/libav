@@ -151,11 +151,13 @@ static int get_qPy_pred(HEVCContext *s, int xC, int yC, int xBase, int yBase, in
 
 void ff_hevc_set_qPy(HEVCContext *s, int xC, int yC, int xBase, int yBase, int log2_cb_size)
 {
-    if (s->HEVClc->tu.cu_qp_delta != 0)
-        s->HEVClc->qp_y = ((get_qPy_pred(s, xC, yC, xBase, yBase, log2_cb_size) + s->HEVClc->tu.cu_qp_delta + 52 + 2 * s->sps->qp_bd_offset) %
-                (52 + s->sps->qp_bd_offset)) - s->sps->qp_bd_offset;
-    else
-        s->HEVClc->qp_y = get_qPy_pred(s, xC, yC, xBase, yBase, log2_cb_size);
+    int qp_y = get_qPy_pred(s, xC, yC, xBase, yBase, log2_cb_size);
+
+    if (s->HEVClc->tu.cu_qp_delta != 0) {
+        int off = s->sps->qp_bd_offset;
+        s->HEVClc->qp_y = ((qp_y + s->HEVClc->tu.cu_qp_delta + 52 + 2 * off) % (52 + off)) - off;
+    } else
+        s->HEVClc->qp_y = qp_y;
 }
 
 static int get_qPy(HEVCContext *s, int xC, int yC)
@@ -210,7 +212,7 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y, int c_idx_min, int c_id
     }
 
     for (c_idx = 0; c_idx < 3; c_idx++) {
-        int chroma = c_idx ? 1 : c_idx;
+        int chroma = c_idx ? 1 : 0;
         int x0 = x >> chroma;
         int y0 = y >> chroma;
         int stride = s->frame->linesize[c_idx];
@@ -222,7 +224,7 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y, int c_idx_min, int c_id
 
         uint8_t *src = &s->frame->data[c_idx][y0 * stride + (x0 << s->sps->pixel_shift)];
         uint8_t *dst = &s->sao_frame->data[c_idx][y0 * stride + (x0 << s->sps->pixel_shift)];
-        int offset = (y_shift>>chroma) * stride + ((x_shift>>chroma) << s->sps->pixel_shift);
+        int offset = (y_shift >> chroma) * stride + ((x_shift >> chroma) << s->sps->pixel_shift);
 
         s->hevcdsp.copy_CTB(dst - offset, src - offset,
                  edges[2] ? width  + (x_shift >> chroma) : width,
@@ -244,7 +246,6 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y, int c_idx_min, int c_id
 
 static int get_pcm(HEVCContext *s, int x, int y)
 {
-    
     int log2_min_pu_size     = s->sps->log2_min_pu_size;
     int pic_width_in_min_pu  = s->sps->pic_width_in_luma_samples  >> s->sps->log2_min_pu_size;
     int pic_height_in_min_pu = s->sps->pic_height_in_luma_samples >> s->sps->log2_min_pu_size;
@@ -260,7 +261,6 @@ static int get_pcm(HEVCContext *s, int x, int y)
 
 static void deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
 {
-
     uint8_t *src;
     int x, y;
     int chroma;
@@ -288,6 +288,7 @@ static void deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
     y_end = y0+ctb_size;
     if (y_end > s->sps->pic_height_in_luma_samples)
         y_end = s->sps->pic_height_in_luma_samples;
+
     // vertical filtering luma
     for (y = y0; y < y_end; y += 8) {
         for (x = x0 ? x0 : 8; x < x_end; x += 8) {
@@ -324,7 +325,7 @@ static void deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
                     const int qp1 = (get_qPy(s, x - 1, y + 8) + get_qPy(s, x, y + 8) + 1) >> 1;
                     c_tc[0] = (bs0 == 2) ? chroma_tc(s, qp0, chroma, tc_offset) : 0;
                     c_tc[1] = (bs1 == 2) ? chroma_tc(s, qp1, chroma, tc_offset) : 0;
-                    src = &s->frame->data[chroma][(y / 2) * s->frame->linesize[chroma] + ((x << s->sps->pixel_shift) / 2)];
+                    src = &s->frame->data[chroma][(y / 2) * s->frame->linesize[chroma] + ((x / 2) << s->sps->pixel_shift)];
                     if (pcmf) {
                         no_p[0] = get_pcm(s, x - 1, y);
                         no_p[1] = get_pcm(s, x - 1, y + 8);
@@ -388,7 +389,7 @@ static void deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
                     const int qp1 = (bs1 == 2) ? ((get_qPy(s, x + 8, y - 1) + get_qPy(s, x + 8, y) + 1) >> 1) : 0;
                     c_tc[0] = (bs0 == 2) ? chroma_tc(s, qp0, chroma, tc_offset) : 0;
                     c_tc[1] = (bs1 == 2) ? chroma_tc(s, qp1, chroma, tc_offset) : 0;
-                    src = &s->frame->data[chroma][(y / 2) * s->frame->linesize[chroma] + ((x << s->sps->pixel_shift) / 2)];
+                    src = &s->frame->data[chroma][(y / 2) * s->frame->linesize[chroma] + ((x / 2) << s->sps->pixel_shift)];
                     if (pcmf) {
                         no_p[0] = get_pcm(s, x, y - 1);
                         no_p[1] = get_pcm(s, x + 8, y - 1);
