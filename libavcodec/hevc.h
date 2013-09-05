@@ -874,14 +874,20 @@ int ff_hevc_decode_nal_sei(HEVCContext *s);
  * Mark all frames in DPB as unused for reference.
  */
 void ff_hevc_clear_refs(HEVCContext *s);
-void ff_hevc_clean_refs(HEVCContext *s);
-int ff_hevc_add_ref(HEVCContext *s, AVFrame *frame, int poc);
+
+/**
+ * Drop all frames currently in DPB.
+ */
+void ff_hevc_flush_dpb(HEVCContext *s);
+
 /**
  * Compute POC of the current frame and return it.
  */
 int ff_hevc_compute_poc(HEVCContext *s, int poc_lsb);
+
+int ff_hevc_add_ref(HEVCContext *s, AVFrame *frame, int poc);
 void ff_hevc_free_refPicListTab(HEVCContext *s, HEVCFrame *ref);
-RefPicList* ff_hevc_get_ref_list(HEVCContext *sc, int short_ref_idx, int x0, int y0);
+RefPicList* ff_hevc_get_ref_list(HEVCContext *s, int short_ref_idx, int x0, int y0);
 void ff_hevc_set_ref_poc_list(HEVCContext *s);
 
 void ff_hevc_save_states(HEVCContext *s, int ctb_addr_ts);
@@ -937,12 +943,18 @@ int ff_hevc_coeff_abs_level_greater2_flag_decode(HEVCContext *s, int c_idx,
 int ff_hevc_coeff_abs_level_remaining(HEVCContext *s, int n, int base_level);
 int ff_hevc_coeff_sign_flag(HEVCContext *s, uint8_t nb);
 
-int ff_hevc_get_NumPocTotalCurr(HEVCContext *s);
+int ff_hevc_get_num_poc(HEVCContext *s);
 
 int ff_hevc_find_ref_idx(HEVCContext *s, int poc);
-int ff_hevc_find_next_ref(HEVCContext *s, int poc);
 int ff_hevc_set_new_ref(HEVCContext *s, AVFrame **frame, int poc);
-int ff_hevc_find_display(HEVCContext *s, AVFrame *frame, int flush, int* poc_display);
+
+/**
+ * Find next frame in output order and put a reference to it in frame.
+ * @return 1 if a frame was output, 0 otherwise
+ */
+int ff_hevc_output_frame(HEVCContext *s, AVFrame *frame, int flush, int* poc_display);
+
+void ff_hevc_unref_frame(HEVCContext *s, HEVCFrame *frame, int flags);
 
 void ff_hevc_luma_mv_merge_mode(HEVCContext *s, int x0, int y0, int nPbW, int nPbH, int log2_cb_size, int part_idx, int merge_idx, MvField *mv);
 void ff_hevc_luma_mv_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW, int nPbH, int log2_cb_size, int part_idx, int merge_idx, MvField *mv , int mvp_lx_flag, int LX);

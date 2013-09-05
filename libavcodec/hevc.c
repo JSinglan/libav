@@ -640,7 +640,7 @@ static int hls_slice_header(HEVCContext *s)
 
             sh->ref_pic_list_modification_flag_lx[0] = 0;
             sh->ref_pic_list_modification_flag_lx[1] = 0;
-            num_poc_total_curr = ff_hevc_get_NumPocTotalCurr(s);
+            num_poc_total_curr = ff_hevc_get_num_poc(s);
             if (s->pps->lists_modification_present_flag && num_poc_total_curr > 1) {
                 sh->ref_pic_list_modification_flag_lx[0] = get_bits1(gb);
                 if (sh->ref_pic_list_modification_flag_lx[0]) {
@@ -2855,7 +2855,7 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
 
 
     if (!avpkt->size) {
-        if ((ret = ff_hevc_find_display(s, data, 1, &poc_display)) < 0)
+        if ((ret = ff_hevc_output_frame(s, data, 1, &poc_display)) < 0)
             return ret;
 
         *got_output = ret;
@@ -2865,7 +2865,7 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
     if ((ret = decode_nal_units(s, avpkt->data, avpkt->size)) < 0) {
         return ret;
     }
-    if ((s->is_decoded && (ret = ff_hevc_find_display(s, data, 0, &poc_display))) < 0) {
+    if ((s->is_decoded && (ret = ff_hevc_output_frame(s, data, 0, &poc_display))) < 0) {
         return ret;
     }
 
@@ -3021,7 +3021,7 @@ static av_cold int hevc_decode_free(AVCodecContext *avctx)
 static void hevc_decode_flush(AVCodecContext *avctx)
 {
     HEVCContext *s = avctx->priv_data;
-    ff_hevc_clean_refs(s);
+    ff_hevc_flush_dpb(s);
     s->max_ra = INT_MAX;
 }
 

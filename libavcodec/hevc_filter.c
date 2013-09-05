@@ -169,6 +169,17 @@ static int get_qPy(HEVCContext *s, int xC, int yC)
     return s->qp_y_tab[x + y * pic_width];
 }
 
+static void copy_CTB(uint8_t *dst, uint8_t *src, int width, int height, int stride)
+{
+    int i;
+
+    for(i=0; i< height; i++){
+        memcpy(dst, src, width);
+        dst += stride;
+        src += stride;
+    }
+}
+
 #define CTB(tab, x, y) ((tab)[(y) * s->sps->pic_width_in_ctbs + (x)])
 
 static void sao_filter_CTB(HEVCContext *s, int x, int y, int c_idx_min, int c_idx_max)
@@ -226,9 +237,9 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y, int c_idx_min, int c_id
         uint8_t *dst = &s->sao_frame->data[c_idx][y0 * stride + (x0 << s->sps->pixel_shift)];
         int offset = (y_shift >> chroma) * stride + ((x_shift >> chroma) << s->sps->pixel_shift);
 
-        s->hevcdsp.copy_CTB(dst - offset, src - offset,
-                 edges[2] ? width  + (x_shift >> chroma) : width,
-                 edges[3] ? height + (y_shift >> chroma) : height, stride);
+        copy_CTB(dst - offset, src - offset,
+                 (edges[2] ? width  + (x_shift >> chroma) : width)  << s->sps->pixel_shift,
+                 (edges[3] ? height + (y_shift >> chroma) : height), stride);
 
         for (class_index = 0; class_index < class && c_idx >= c_idx_min &&
                               c_idx < c_idx_max; class_index++) {

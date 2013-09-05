@@ -29,22 +29,6 @@
 #define SCALE(dst, x) (dst) = av_clip_int16(((x) + add) >> shift)
 #define ADD_AND_SCALE(dst, x) (dst) = av_clip_pixel((dst) + av_clip_int16(((x) + add) >> shift))
 
-
-
-static void FUNC(copy_CTB)(uint8_t *_dst, uint8_t *_src, int width, int height, int _stride)
-{
-    pixel *dst = (pixel*)_dst;
-    pixel *src = (pixel*)_src;
-    ptrdiff_t stride = _stride / sizeof(pixel);
-    int i;
-
-    for (i = 0; i < height; i++){
-        memcpy(dst, src, width * sizeof(pixel));
-        dst += stride;
-        src += stride;
-    }
-}
-
 static void FUNC(put_pcm)(uint8_t *_dst, ptrdiff_t _stride, int size,
                           GetBitContext *gb, int pcm_bit_depth)
 {
@@ -1390,4 +1374,3 @@ static void FUNC(hevc_v_loop_filter_luma)(uint8_t *pix, ptrdiff_t stride,
 #undef TQ1
 #undef TQ2
 #undef TQ3
-

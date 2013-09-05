@@ -68,6 +68,15 @@ void ff_hevc_free_refPicListTab(HEVCContext *s, HEVCFrame *ref)
     ref->count = 0;
 }
 
+void ff_hevc_unref_frame(HEVCContext *s, HEVCFrame *frame, int flags)
+{
+    frame->flags &= ~flags;
+    if (!frame->flags) {
+        av_frame_unref(frame->frame);
+        ff_hevc_free_refPicListTab(s, frame);
+    }
+}
+
 static void update_refs(HEVCContext *s)
 {
     int i, j;
@@ -80,13 +89,9 @@ static void update_refs(HEVCContext *s)
     }
 
     for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
-        HEVCFrame *ref = &s->DPB[i];
-        if (ref->frame->buf[0] && !used[i])
-            ref->flags &= ~(HEVC_FRAME_FLAG_SHORT_REF | HEVC_FRAME_FLAG_LT_REF);
-        if (ref->frame->buf[0] && !ref->flags) {
-            av_frame_unref(ref->frame);
-            ff_hevc_free_refPicListTab(s, ref);
-        }
+        HEVCFrame *frame = &s->DPB[i];
+        if (frame->frame->buf[0] && !used[i])
+            ff_hevc_unref_frame(s, frame, HEVC_FRAME_FLAG_SHORT_REF | HEVC_FRAME_FLAG_LT_REF);
     }
 }
 
@@ -141,24 +146,15 @@ RefPicList* ff_hevc_get_ref_list(HEVCContext *s, int short_ref_idx, int x0, int 
 void ff_hevc_clear_refs(HEVCContext *s)
 {
     int i;
-    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
-        HEVCFrame *ref = &s->DPB[i];
-        if (!(ref->flags & HEVC_FRAME_FLAG_OUTPUT)) {
-            av_frame_unref(ref->frame);
-            ref->flags = 0;
-            ff_hevc_free_refPicListTab(s, ref);
-        }
-    }
+    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++)
+        ff_hevc_unref_frame(s, &s->DPB[i], HEVC_FRAME_FLAG_SHORT_REF);
 }
 
-void ff_hevc_clean_refs(HEVCContext *s)
+void ff_hevc_flush_dpb(HEVCContext *s)
 {
     int i;
-    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
-        HEVCFrame *ref = &s->DPB[i];
-        av_frame_unref(ref->frame);
-        ref->flags = 0;
-    }
+    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++)
+        ff_hevc_unref_frame(s, &s->DPB[i], ~0);
 }
 
 int ff_hevc_set_new_ref(HEVCContext *s, AVFrame **frame, int poc)
@@ -174,7 +170,7 @@ int ff_hevc_set_new_ref(HEVCContext *s, AVFrame **frame, int poc)
 
             ref->flags    = HEVC_FRAME_FLAG_OUTPUT | HEVC_FRAME_FLAG_SHORT_REF;
             ref->sequence = s->seq_decode;
-            return ff_reget_buffer(s->avctx, *frame);
+            return ff_get_buffer(s->avctx, *frame, AV_GET_BUFFER_FLAG_REF);
         }
     }
     av_log(s->avctx, AV_LOG_ERROR,
@@ -182,7 +178,7 @@ int ff_hevc_set_new_ref(HEVCContext *s, AVFrame **frame, int poc)
     return -1;
 }
 
-int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_display)
+int ff_hevc_output_frame(HEVCContext *s, AVFrame *out, int flush, int* poc_display)
 {
     int nb_output = 0;
     int min_poc   = 0xFFFF;
@@ -210,10 +206,9 @@ int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
         if (nb_output) {
             HEVCFrame *frame = &s->DPB[min_idx];
 
-            frame->flags &= ~HEVC_FRAME_FLAG_OUTPUT;
             *poc_display = frame->poc;
-            frame->frame->display_picture_number = frame->poc;
             ret = av_frame_ref(out, frame->frame);
+            ff_hevc_unref_frame(s, frame, HEVC_FRAME_FLAG_OUTPUT);
             if (ret < 0)
                 return ret;
             return 1;
@@ -224,7 +219,6 @@ int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
         else
             run = 0;
     }
-
     return 0;
 }
 
@@ -386,7 +380,7 @@ void ff_hevc_set_ref_poc_list(HEVCContext *s)
     }
 }
 
-int ff_hevc_get_NumPocTotalCurr(HEVCContext *s)
+int ff_hevc_get_num_poc(HEVCContext *s)
 {
     int ret = 0;
     int i;
