@@ -2355,7 +2355,7 @@ static int hls_slice_data_wpp(HEVCContext *s, const uint8_t *nal, int length)
             s->HEVClcList[i]->cabac_state = av_malloc(HEVC_CONTEXTS);
             s->HEVClcList[i]->cc = av_malloc(sizeof(CABACContext));
             s->HEVClcList[i]->edge_emu_buffer = av_malloc((MAX_PB_SIZE + 7) * s->frame->linesize[0]);
-            s->HEVClcList[i]->mc_buffer = av_malloc((MAX_PB_SIZE + 7) * MAX_PB_SIZE * sizeof(uint16_t));
+            
             if (s->enable_parallel_tiles) {
                 s->HEVClcList[i]->save_boundary_strengths =
                         av_malloc(
@@ -2557,6 +2557,8 @@ static int decode_nal_unit(HEVCContext *s, const uint8_t *nal, int length)
         return ret;
 
     ret = hls_nal_unit(s);
+    if (s->temporal_id >= s->temporal_layer_id)
+        return 0;
     if (ret < 0) {
         av_log(s->avctx, AV_LOG_ERROR, "Invalid NAL unit %d, skipping.\n",
                 s->nal_unit_type);
@@ -2913,8 +2915,6 @@ static av_cold int hevc_decode_init(AVCodecContext *avctx)
     lc = s->HEVClcList[0] = s->HEVClc;
    
     s->sList[0] = s;
-
-    lc->mc_buffer = av_malloc((MAX_PB_SIZE + 7) * MAX_PB_SIZE * sizeof(uint16_t));
     s->tmp_frame = av_frame_alloc();
     s->cabac_state = av_malloc(HEVC_CONTEXTS);
 
@@ -2969,7 +2969,7 @@ static av_cold int hevc_decode_free(AVCodecContext *avctx)
     av_free(lc->gb);
     av_free(lc->cc);
     av_free(lc->edge_emu_buffer);
-    av_free(lc->mc_buffer);
+    
 
     for (i = 0; i < MAX_TRANSFORM_DEPTH; i++) {
         av_freep(&lc->tt.cbf_cb[i]);
@@ -2988,7 +2988,7 @@ static av_cold int hevc_decode_free(AVCodecContext *avctx)
             av_free(lc->gb);
             av_free(lc->cc);
             av_free(lc->edge_emu_buffer);
-            av_free(lc->mc_buffer);
+            
             for (j = 0; j < MAX_TRANSFORM_DEPTH; j++) {
                 av_freep(&lc->tt.cbf_cb[j]);
                 av_freep(&lc->tt.cbf_cr[j]);
@@ -3032,6 +3032,8 @@ static const AVOption options[] = {
         AV_OPT_TYPE_INT, {.i64 = 0}, 0, 1, PAR },
     { "disable-au", "disable read frame AU by AU", OFFSET(disable_au),
         AV_OPT_TYPE_INT, {.i64 = 0}, 0, 1, PAR },
+    { "temporal-layer-id", "select layer temporal id", OFFSET(temporal_layer_id),
+        AV_OPT_TYPE_INT, {.i64 = 8}, 0, 8, PAR },
     { NULL },
 };
 
