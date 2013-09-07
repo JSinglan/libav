@@ -518,7 +518,7 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
             MvField *curr = &tab_mvf[yq_pu * pic_width_in_min_pu + x_pu];
             uint8_t top_cbf_luma  = s->cbf_luma[yp_tu * pic_width_in_min_tu + x_tu];
             uint8_t curr_cbf_luma = s->cbf_luma[yq_tu * pic_width_in_min_tu + x_tu];
-            RefPicList* top_refPicList = ff_hevc_get_ref_list(s, ff_hevc_find_ref_idx(s, s->poc), x0 + i, y0 - 1);
+            RefPicList* top_refPicList = ff_hevc_get_ref_list(s, s->curr_dpb_idx, x0 + i, y0 - 1);
 
             bs = boundary_strength(s, curr, curr_cbf_luma, top, top_cbf_luma, top_refPicList, 1);
             if (!s->sh.slice_loop_filter_across_slices_enabled_flag && (slice_or_tiles_up_boundary & 1) && (y0 % (1 << s->sps->log2_ctb_size)) == 0)
@@ -546,7 +546,7 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
                 MvField *curr = &tab_mvf[yq_pu * pic_width_in_min_pu + x_pu];
                 uint8_t top_cbf_luma  = s->cbf_luma[yp_tu * pic_width_in_min_tu + x_tu];
                 uint8_t curr_cbf_luma = s->cbf_luma[yq_tu * pic_width_in_min_tu + x_tu];
-                RefPicList* top_refPicList = ff_hevc_get_ref_list(s, ff_hevc_find_ref_idx(s, s->poc), x0 + i, y0 + j - 1);
+                RefPicList* top_refPicList = ff_hevc_get_ref_list(s, s->curr_dpb_idx, x0 + i, y0 + j - 1);
 
                 bs = boundary_strength(s, curr, curr_cbf_luma, top, top_cbf_luma, top_refPicList, 0);
                 if (s->sh.disable_deblocking_filter_flag == 1)
@@ -569,7 +569,7 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
 
             uint8_t left_cbf_luma = s->cbf_luma[y_tu * pic_width_in_min_tu + xp_tu];
             uint8_t curr_cbf_luma = s->cbf_luma[y_tu * pic_width_in_min_tu + xq_tu];
-            RefPicList* left_refPicList = ff_hevc_get_ref_list(s, ff_hevc_find_ref_idx(s, s->poc), x0 - 1, y0 + i);
+            RefPicList* left_refPicList = ff_hevc_get_ref_list(s, s->curr_dpb_idx, x0 - 1, y0 + i);
 
             bs = boundary_strength(s, curr, curr_cbf_luma, left, left_cbf_luma, left_refPicList, 1);
             if (!s->sh.slice_loop_filter_across_slices_enabled_flag && (slice_or_tiles_left_boundary & 1) && (x0 % (1 << s->sps->log2_ctb_size)) == 0)
@@ -598,7 +598,7 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
                 MvField *curr = &tab_mvf[y_pu * pic_width_in_min_pu + xq_pu];
                 uint8_t left_cbf_luma = s->cbf_luma[y_tu * pic_width_in_min_tu + xp_tu];
                 uint8_t curr_cbf_luma = s->cbf_luma[y_tu * pic_width_in_min_tu + xq_tu];
-                RefPicList* left_refPicList = ff_hevc_get_ref_list(s, ff_hevc_find_ref_idx(s, s->poc), x0 + i - 1, y0 + j);
+                RefPicList* left_refPicList = ff_hevc_get_ref_list(s, s->curr_dpb_idx, x0 + i - 1, y0 + j);
 
                 bs = boundary_strength(s, curr, curr_cbf_luma, left, left_cbf_luma, left_refPicList, 0);
                 if (s->sh.disable_deblocking_filter_flag == 1)
