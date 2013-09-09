@@ -258,8 +258,12 @@ static void pic_arrays_free(HEVCContext *s)
 /* allocate arrays that depend on frame dimensions */
 static int pic_arrays_init(HEVCContext *s)
 {
-    int pic_size             = s->sps->pic_width_in_luma_samples * s->sps->pic_height_in_luma_samples;
-    int pic_size_in_ctb      = pic_size >> (s->sps->log2_min_coding_block_size << 1);
+    int log2_min_cb_size     = s->sps->log2_min_coding_block_size;
+    int pic_width            = s->sps->pic_width_in_luma_samples;
+    int pic_height           = s->sps->pic_height_in_luma_samples;
+    int pic_size             = pic_width * pic_height;
+    int pic_size_in_ctb      = ((pic_width >> log2_min_cb_size) + 1) *
+                               ((pic_height >> log2_min_cb_size) + 1);
     int ctb_count            = s->sps->pic_width_in_ctbs * s->sps->pic_height_in_ctbs;
     int pic_width_in_min_pu  = s->sps->pic_width_in_luma_samples  >> s->sps->log2_min_pu_size;
     int pic_height_in_min_pu = s->sps->pic_height_in_luma_samples >> s->sps->log2_min_pu_size;
@@ -299,8 +303,8 @@ static int pic_arrays_init(HEVCContext *s)
     if (!s->qp_y_tab)
         goto fail;
 
-    s->horizontal_bs = av_mallocz(2 * s->bs_width * s->bs_height);
-    s->vertical_bs   = av_mallocz(2 * s->bs_width * s->bs_height);
+    s->horizontal_bs = av_mallocz(2 * s->bs_width * (s->bs_height + 1));
+    s->vertical_bs   = av_mallocz(2 * s->bs_width * (s->bs_height + 1));
     if (!s->horizontal_bs || !s->vertical_bs)
         goto fail;
 
@@ -2642,8 +2646,8 @@ static int decode_nal_unit(HEVCContext *s, const uint8_t *nal, int length)
             int pic_width_in_min_tu = s->sps->pic_width_in_luma_samples >> s->sps->log2_min_transform_block_size;
             int pic_height_in_min_tu = s->sps->pic_height_in_luma_samples >> s->sps->log2_min_transform_block_size;
 
-            memset(s->horizontal_bs, 0, 2 * s->bs_width * s->bs_height);
-            memset(s->vertical_bs, 0, s->bs_width * 2 * s->bs_height);
+            memset(s->horizontal_bs, 0, 2 * s->bs_width * (s->bs_height + 1));
+            memset(s->vertical_bs,   0, 2 * s->bs_width * (s->bs_height + 1));
             memset(s->cbf_luma, 0 , pic_width_in_min_tu * pic_height_in_min_tu);
             memset(s->is_pcm, 0 , pic_width_in_min_pu * pic_height_in_min_pu);
             lc->start_of_tiles_x = 0;

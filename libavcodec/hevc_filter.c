@@ -165,8 +165,8 @@ static int get_qPy(HEVCContext *s, int xC, int yC)
     int log2_min_cb_size  = s->sps->log2_min_coding_block_size;
     int pic_width         = s->sps->pic_width_in_luma_samples  >> log2_min_cb_size;
     int pic_height        = s->sps->pic_height_in_luma_samples >> log2_min_cb_size;
-    int x                 = FFMIN(xC >> log2_min_cb_size, pic_width  - 1);
-    int y                 = FFMIN(yC >> log2_min_cb_size, pic_height - 1);
+    int x                 = xC >> log2_min_cb_size;
+    int y                 = yC >> log2_min_cb_size;
     return s->qp_y_tab[x + y * pic_width];
 }
 
