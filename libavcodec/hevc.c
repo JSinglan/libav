@@ -319,6 +319,7 @@ static int pic_arrays_init(HEVCContext *s)
         f->refPicListTab = av_mallocz_array(ctb_count, sizeof(*f->refPicListTab));
         if (!f->refPicListTab)
             goto fail;
+        f->ctb_count = ctb_count;
     }
 
     return 0;
@@ -616,11 +617,6 @@ static int hls_slice_header(HEVCContext *s)
             s->nal_unit_type != NAL_RADL_R &&
             s->nal_unit_type != NAL_RASL_R)
             s->pocTid0 = s->poc;
-//        av_log(s->avctx, AV_LOG_INFO, "Decode  : POC %d NAL %d\n", s->poc, s->nal_unit_type);
-        if (!s->pps) {
-            av_log(s->avctx, AV_LOG_ERROR, "No PPS active while decoding slice\n");
-            return AVERROR_INVALIDDATA;
-        }
 
         if (s->sps->sample_adaptive_offset_enabled_flag) {
             sh->slice_sample_adaptive_offset_flag[0] = get_bits1(gb);

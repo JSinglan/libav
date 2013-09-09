@@ -310,8 +310,6 @@ static void derive_spatial_merge_candidates(HEVCContext *s, int x0, int y0,
                                             int singleMCLFlag, int part_idx,
                                             MvField mergecandlist[])
 {
-
-
     HEVCLocalContext *lc = s->HEVClc;
     RefPicList *refPicList = s->ref->refPicList;
     MvField *tab_mvf = s->ref->tab_mvf;
@@ -688,8 +686,9 @@ static av_always_inline void dist_scale(HEVCContext *s, Mv * mv,
     }
 }
 
-static int mv_mp_mode_mx(HEVCContext *s, int x, int y, int pred_flag_index, Mv *mv, int ref_idx_curr, int ref_idx) {
-
+static int mv_mp_mode_mx(HEVCContext *s, int x, int y, int pred_flag_index,
+                         Mv *mv, int ref_idx_curr, int ref_idx)
+{
     MvField *tab_mvf = s->ref->tab_mvf;
     int pic_width_in_min_pu = s->sps->pic_width_in_luma_samples >> s->sps->log2_min_pu_size;
 

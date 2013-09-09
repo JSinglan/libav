@@ -1,7 +1,7 @@
 /*
  * HEVC video Decoder
  *
- * Copyright (C) 2012 Guillaume Martres
+ * Copyright (C) 2012 - 2013 Guillaume Martres
  *
  * This file is part of Libav.
  *
@@ -716,7 +716,7 @@ typedef struct DBParams {
 
 #define HEVC_FRAME_FLAG_OUTPUT    (1 << 0)
 #define HEVC_FRAME_FLAG_SHORT_REF (1 << 1)
-#define HEVC_FRAME_FLAG_LONG_REF    (1 << 2)
+#define HEVC_FRAME_FLAG_LONG_REF  (1 << 2)
 
 typedef struct HEVCFrame {
     AVFrame *frame;
@@ -724,7 +724,7 @@ typedef struct HEVCFrame {
     MvField *tab_mvf;
     RefPicList *refPicList;
     RefPicListTab **refPicListTab;
-    int count;
+    int ctb_count;
     /**
      * A combination of HEVC_FRAME_FLAG_*
      */
