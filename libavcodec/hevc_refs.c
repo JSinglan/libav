@@ -1,7 +1,7 @@
 /*
  * HEVC video Decoder
  *
- * Copyright (C) 2012 Guillaume Martres
+ * Copyright (C) 2012 - 2013 Guillaume Martres
  * Copyright (C) 2012 - 2013 Gildas Cocherel
  *
  * This file is part of Libav.
@@ -28,13 +28,15 @@ int ff_hevc_find_ref_idx(HEVCContext *s, int poc)
 {
     int i;
     int LtMask = (1 << s->sps->log2_max_poc_lsb) - 1;
+
     for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
         HEVCFrame *ref = &s->DPB[i];
         if (ref->frame->buf[0] && (ref->sequence == s->seq_decode)) {
-            if ((ref->flags & HEVC_FRAME_FLAG_LT_REF) != 0 && (ref->poc & LtMask) == poc)
-                return i;
-        }
+            if ((ref->flags & HEVC_FRAME_FLAG_LONG_REF) != 0 && (ref->poc & LtMask) == poc)
+	            return i;
+	    }
     }
+
     for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
         HEVCFrame *ref = &s->DPB[i];
         if (ref->frame->buf[0] && (ref->sequence == s->seq_decode)) {
@@ -42,6 +44,7 @@ int ff_hevc_find_ref_idx(HEVCContext *s, int poc)
 	            return i;
 	    }
     }
+
     av_log(s->avctx, AV_LOG_ERROR,
            "Could not find ref with POC %d\n", poc);
     return 0;
@@ -90,9 +93,9 @@ static void update_refs(HEVCContext *s)
 
     for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
         HEVCFrame *frame = &s->DPB[i];
-        if (frame->frame->buf[0] && !used[i]) {
-            ff_hevc_unref_frame(s, frame, HEVC_FRAME_FLAG_SHORT_REF | HEVC_FRAME_FLAG_LT_REF);
-        }            
+        if (frame->frame->buf[0] && !used[i])
+            ff_hevc_unref_frame(s, frame, HEVC_FRAME_FLAG_SHORT_REF |
+                                          HEVC_FRAME_FLAG_LONG_REF);
     }
 }
 
@@ -331,6 +334,7 @@ void ff_hevc_set_ref_poc_list(HEVCContext *s)
     LongTermRPS *long_rps    = &s->sh.long_term_rps;
     RefPicList   *refPocList = s->sh.refPocList;
     int MaxPicOrderCntLsb = 1 << s->sps->log2_max_poc_lsb;
+
     if (rps != NULL) {
         for (i = 0; i < rps->num_negative_pics; i ++) {
             if ( rps->used[i] == 1 ) {
@@ -365,12 +369,12 @@ void ff_hevc_set_ref_poc_list(HEVCContext *s)
             if (long_rps->UsedByCurrPicLt[i]) {
                 refPocList[LT_CURR].idx[j]  = ff_hevc_find_ref_idx(s, pocLt);
                 refPocList[LT_CURR].list[j] = s->DPB[refPocList[LT_CURR].idx[j]].poc;
-                s->DPB[refPocList[LT_CURR].idx[j]].flags |= HEVC_FRAME_FLAG_LT_REF;
+                s->DPB[refPocList[LT_CURR].idx[j]].flags |= HEVC_FRAME_FLAG_LONG_REF;
                 j++;
             } else {
                 refPocList[LT_FOLL].idx[k]  = ff_hevc_find_ref_idx(s, pocLt);
                 refPocList[LT_FOLL].list[k] = s->DPB[refPocList[LT_FOLL].idx[k]].poc;
-                s->DPB[refPocList[LT_CURR].idx[j]].flags &= ~HEVC_FRAME_FLAG_LT_REF;
+                s->DPB[refPocList[LT_CURR].idx[j]].flags &= ~HEVC_FRAME_FLAG_LONG_REF;
                 k++;
             }
         }

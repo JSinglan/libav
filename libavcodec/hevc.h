@@ -716,7 +716,7 @@ typedef struct DBParams {
 
 #define HEVC_FRAME_FLAG_OUTPUT    (1 << 0)
 #define HEVC_FRAME_FLAG_SHORT_REF (1 << 1)
-#define HEVC_FRAME_FLAG_LT_REF    (1 << 2)
+#define HEVC_FRAME_FLAG_LONG_REF    (1 << 2)
 
 typedef struct HEVCFrame {
     AVFrame *frame;
@@ -745,7 +745,7 @@ typedef struct Filter_data {
     int slice_or_tiles_up_boundary;
 } Filter_data;
 
-typedef struct HEVCThreadContext {
+typedef struct HEVCLocalContext {
     uint8_t *cabac_state;
     int ctx_set;
     int greater1_ctx;
@@ -777,20 +777,28 @@ typedef struct HEVCThreadContext {
     DECLARE_ALIGNED(16, int16_t, mc_buffer[(MAX_PB_SIZE + 7) * MAX_PB_SIZE]);
     Filter_data *save_boundary_strengths;
     int nb_saved;
-} HEVCThreadContext;
+} HEVCLocalContext;
 
 typedef struct HEVCContext {
-    AVClass *c;  // needed by private avoptions
+    const AVClass *c;  // needed by private avoptions
     AVCodecContext      *avctx;
 
     struct HEVCContext  *sList[MAX_NB_THREADS];
 
 
-    HEVCThreadContext    *HEVClcList[MAX_NB_THREADS];
-    HEVCThreadContext    *HEVClc;
+    HEVCLocalContext    *HEVClcList[MAX_NB_THREADS];
+    HEVCLocalContext    *HEVClc;
+
+
+    uint8_t             threads_number;
+    int                 decode_checksum_sei;
+    int                 disable_au;
+    int                 temporal_layer_id;
+    int                 width;
+    int                 height;
 
     uint8_t *cabac_state; //
-    
+
     AVFrame *frame;
     AVFrame *sao_frame;
     AVFrame *tmp_frame;
@@ -815,8 +823,6 @@ typedef struct HEVCContext {
     int bs_width;
     int bs_height;
     
-    uint8_t md5[3][16];
-    uint8_t is_md5;
     int * ctb_entry_count;
     int coding_tree_count;
     int is_decoded;
@@ -861,13 +867,10 @@ typedef struct HEVCContext {
     int enable_parallel_tiles;
     int nuh_layer_id;
     int ERROR;
-    
-    uint8_t             threads_number;
-    int                 decode_checksum_sei;
-    int                 disable_au;
-    int                 temporal_layer_id;
-    int                 width;
-    int                 height;
+
+    // for checking the frame checksums
+    uint8_t md5[3][16];
+    uint8_t is_md5;
 } HEVCContext;
 
 enum ScanType {
@@ -876,7 +879,7 @@ enum ScanType {
     SCAN_VERT
 };
 
-int ff_hevc_decode_short_term_rps(HEVCThreadContext *s, int idx, SPS *sps);
+int ff_hevc_decode_short_term_rps(HEVCLocalContext *s, int idx, SPS *sps);
 int ff_hevc_decode_nal_vps(HEVCContext *s);
 int ff_hevc_decode_nal_sps(HEVCContext *s);
 int ff_hevc_decode_nal_pps(HEVCContext *s);
