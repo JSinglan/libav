@@ -131,6 +131,8 @@ static int parse_strk(AVFormatContext *s,
         return AVERROR_INVALIDDATA;
 
     track = AV_RL32(buf + 8);
+    if (track < 0)
+        return AVERROR_INVALIDDATA;
     if (track + 1 > fourxm->track_count) {
         if (av_reallocp_array(&fourxm->tracks, track + 1, sizeof(AudioTrack)))
             return AVERROR(ENOMEM);
@@ -146,7 +148,7 @@ static int parse_strk(AVFormatContext *s,
 
     if (fourxm->tracks[track].channels    <= 0 ||
         fourxm->tracks[track].sample_rate <= 0 ||
-        fourxm->tracks[track].bits        < 0) {
+        fourxm->tracks[track].bits        <= 0) {
         av_log(s, AV_LOG_ERROR, "audio header invalid\n");
         return AVERROR_INVALIDDATA;
     }
