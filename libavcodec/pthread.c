@@ -63,6 +63,15 @@ typedef struct ThreadContext {
     pthread_mutex_t current_job_lock;
     int current_job;
     int done;
+
+#if WPP_PTHREAD_MUTEX
+    int *entries;
+    int entries_count;
+    int thread_count;
+    pthread_cond_t *progress_cond;
+    pthread_mutex_t *progress_mutex;
+#endif    
+
 } ThreadContext;
 
 /**
@@ -192,6 +201,17 @@ static void thread_free(AVCodecContext *avctx)
     pthread_mutex_destroy(&c->current_job_lock);
     pthread_cond_destroy(&c->current_job_cond);
     pthread_cond_destroy(&c->last_job_cond);
+#if WPP_PTHREAD_MUTEX
+    for(i=0; i < c->thread_count; i++) {
+        pthread_mutex_lock(&c->progress_mutex[i]);
+        pthread_cond_broadcast(&c->progress_cond[i]);
+        pthread_mutex_unlock(&c->progress_mutex[i]);
+        pthread_mutex_destroy(&c->progress_mutex[i]);
+        pthread_cond_destroy(&c->progress_cond[i]);
+    }
+    av_free(c->progress_mutex);
+    av_free(c->progress_cond);
+#endif
     av_free(c->workers);
     av_freep(&avctx->thread_opaque);
 }
@@ -1023,3 +1043,59 @@ void ff_thread_free(AVCodecContext *avctx)
     else
         thread_free(avctx);
 }
+
+#if WPP_PTHREAD_MUTEX
+void ff_thread_report_progress2(AVCodecContext *avctx, int field, int thread, int n)
+{
+    ThreadContext *p  = avctx->thread_opaque;
+    int *count_entries = p->entries;
+    
+    pthread_mutex_lock(&p->progress_mutex[thread]);
+    count_entries[field] +=n;
+    pthread_cond_signal(&p->progress_cond[thread]);
+    pthread_mutex_unlock(&p->progress_mutex[thread]);
+    
+}
+
+void ff_thread_await_progress2(AVCodecContext *avctx, int field, int thread, int shift)
+{
+    ThreadContext *p   = avctx->thread_opaque;
+    int *count_entries = p->entries;
+   
+    if (!count_entries || !field) return;
+    thread = thread ? thread-1:p->thread_count-1;
+
+    pthread_mutex_lock(&p->progress_mutex[thread]);
+    while ( (count_entries[field-1]-count_entries[field]) < shift ){
+        pthread_cond_wait(&p->progress_cond[thread], &p->progress_mutex[thread]);
+    }
+    pthread_mutex_unlock(&p->progress_mutex[thread]);
+}
+
+int ff_alloc_entries(AVCodecContext *avctx, int count)
+{
+    int i;
+    if (avctx->active_thread_type&FF_THREAD_SLICE)  {
+        ThreadContext *p = avctx->thread_opaque;
+        p->thread_count = avctx->thread_count;
+        p->entries = av_mallocz(count * sizeof(int));
+        if (!p->entries) {
+            return AVERROR(ENOMEM);
+        }
+        p->entries_count = count;
+        p->progress_mutex = av_malloc(p->thread_count * sizeof(pthread_mutex_t));
+        p->progress_cond = av_malloc(p->thread_count * sizeof(pthread_cond_t));
+        for(i=0; i < p->thread_count; i++) {
+            pthread_mutex_init(&p->progress_mutex[i], NULL);
+            pthread_cond_init(&p->progress_cond[i], NULL);
+        }
+    }
+    return 0;
+}
+
+void ff_reset_entries(AVCodecContext *avctx)
+{
+    ThreadContext *p = avctx->thread_opaque;
+    memset(p->entries, 0, p->entries_count * sizeof(int));
+}
+#endif
