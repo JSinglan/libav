@@ -1136,11 +1136,17 @@ static void hls_transform_unit(HEVCContext *s, int x0, int  y0, int xBase, int y
     int scan_idx_c = SCAN_DIAG;
 
     if (lc->cu.pred_mode == MODE_INTRA) {
+        int trafo_size = 1 << log2_trafo_size;
+        ff_hevc_set_neighbour_available(s, x0, y0, trafo_size, trafo_size);
         s->hpc.intra_pred(s, x0, y0, log2_trafo_size, 0);
         if (log2_trafo_size > 2) {
+            trafo_size = trafo_size<<(s->sps->hshift[1]-1);
+            ff_hevc_set_neighbour_available(s, x0, y0, trafo_size, trafo_size);
             s->hpc.intra_pred(s, x0, y0, log2_trafo_size - 1, 1);
             s->hpc.intra_pred(s, x0, y0, log2_trafo_size - 1, 2);
         } else if (blk_idx == 3) {
+            trafo_size = trafo_size<<(s->sps->hshift[1]);
+            ff_hevc_set_neighbour_available(s, xBase, yBase, trafo_size, trafo_size);
             s->hpc.intra_pred(s, xBase, yBase, log2_trafo_size, 1);
             s->hpc.intra_pred(s, xBase, yBase, log2_trafo_size, 2);
         }
@@ -1541,6 +1547,7 @@ static void hls_prediction_unit(HEVCContext *s, int x0, int y0, int nPbW, int nP
                 for (j = 0; j < nPbH >> s->sps->log2_min_pu_size; j++)
                     tab_mvf[(y_pu + j) * pic_width_in_min_pu + x_pu + i] = current_mv;
         } else {
+            ff_hevc_set_neighbour_available(s, x0, y0, nPbW, nPbH);
             if (s->sh.slice_type == B_SLICE)
                 inter_pred_idc = ff_hevc_inter_pred_idc_decode(s, nPbW, nPbH);
 
@@ -1932,6 +1939,7 @@ static int hls_coding_unit(HEVCContext *s, int x0, int y0, int log2_cb_size)
     } else {
         if (s->sh.slice_type != I_SLICE)
             lc->cu.pred_mode = ff_hevc_pred_mode_decode(s);
+
         if (lc->cu.pred_mode != MODE_INTRA ||
             log2_cb_size == s->sps->log2_min_coding_block_size) {
             lc->cu.part_mode = ff_hevc_part_mode_decode(s, log2_cb_size);
@@ -2230,6 +2238,7 @@ static int hls_decode_entry_wpp(AVCodecContext *avctxt, void *input_ctb_row, int
     int ctb_row = ctb_row_p[job];
     int ctb_addr_rs = s1->sh.slice_ctb_addr_rs + (ctb_row) * ((s1->sps->pic_width_in_luma_samples + (ctb_size - 1))>> s1->sps->log2_ctb_size);
     int ctb_addr_ts = s1->pps->ctb_addr_rs_to_ts[ctb_addr_rs];
+    int thread = ctb_row%s1->threads_number;
     s = s1->sList[self_id];
     lc = s->HEVClc;
    
@@ -2394,8 +2403,8 @@ static int hls_slice_data_wpp(HEVCContext *s, const uint8_t *nal, int length)
         }
         s->sh.size[i - 1] = s->sh.entry_point_offset[i] - cmpt;
 #else
-        offset += (sc->sh.entry_point_offset[i - 1]);
-        sc->sh.size[i - 1] = sc->sh.entry_point_offset[i];
+        offset += (s->sh.entry_point_offset[i - 1]);
+        s->sh.size[i - 1] = s->sh.entry_point_offset[i];
 #endif
         s->sh.offset[i - 1] = offset;
 

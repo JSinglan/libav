@@ -90,8 +90,9 @@ static void update_refs(HEVCContext *s)
 
     for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
         HEVCFrame *frame = &s->DPB[i];
-        if (frame->frame->buf[0] && !used[i])
+        if (frame->frame->buf[0] && !used[i]) {
             ff_hevc_unref_frame(s, frame, HEVC_FRAME_FLAG_SHORT_REF | HEVC_FRAME_FLAG_LT_REF);
+        }            
     }
 }
 
