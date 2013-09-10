@@ -826,17 +826,10 @@ void ff_hevc_luma_mv_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW,
     int cand_up          = lc->na.cand_up;
     int cand_up_right    = lc->na.cand_up_right;
 
-    if (LX == 0) {
-        ref_idx_curr = 0; //l0
-        ref_idx = mv->ref_idx[0];
-        pred_flag_index_l0 = 0;
-        pred_flag_index_l1 = 1;
-    } else {
-        ref_idx_curr = 1; // l1
-        ref_idx = mv->ref_idx[1];
-        pred_flag_index_l0 = 1;
-        pred_flag_index_l1 = 0;
-    }
+    ref_idx_curr       = LX; //l0
+    ref_idx            = mv->ref_idx[LX];
+    pred_flag_index_l0 = LX;
+    pred_flag_index_l1 = !LX;
 
 
     available_flag_lx_a0 = luma_mxa_mvp_mode(s, x0, y0, nPbW, nPbH, log2_cb_size,
@@ -939,11 +932,6 @@ void ff_hevc_luma_mv_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW,
         num_mvp_cand_lx++;
     }
 
-    if (LX == 0) {
-        mv->mv[0] = mvpcand_list[mvp_lx_flag];
-
-    }
-    if (LX == 1) {
-        mv->mv[1] = mvpcand_list[mvp_lx_flag];
-    }
+    mv->mv[LX].x = mvpcand_list[mvp_lx_flag].x;
+    mv->mv[LX].y = mvpcand_list[mvp_lx_flag].y;
 }
