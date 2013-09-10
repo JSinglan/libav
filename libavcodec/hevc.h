@@ -871,6 +871,8 @@ typedef struct HEVCContext {
     // for checking the frame checksums
     uint8_t md5[3][16];
     uint8_t is_md5;
+
+    int strict_def_disp_win;
 } HEVCContext;
 
 enum ScanType {
