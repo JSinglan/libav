@@ -740,7 +740,7 @@ static int luma_mxa_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW, int nPbH,
     int xa1_pu;
     int ya1_pu;
     int is_available_a1;
-    is_available_a0 = (cand_bottom_left && !(TAB_MVF(xa0_pu, ya0_pu).is_intra));
+    is_available_a0 = (cand_bottom_left && !TAB_MVF(xa0_pu, ya0_pu).is_intra);
     if (is_available_a0)
         is_available_a0 = check_prediction_block_available(s, log2_cb_size, x0, y0, nPbW,
                                                            nPbH, x0 - 1, y0 + nPbH, part_idx);
@@ -753,7 +753,7 @@ static int luma_mxa_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW, int nPbH,
     }
     xa1_pu = (x0 - 1) >> s->sps->log2_min_pu_size;
     ya1_pu = (y0 + nPbH - 1) >> s->sps->log2_min_pu_size;
-    is_available_a1 = cand_left && !(TAB_MVF(xa1_pu, ya1_pu).is_intra);
+    is_available_a1 = cand_left && !TAB_MVF(xa1_pu, ya1_pu).is_intra;
 
     if (is_available_a1) {
         *is_scaled_flag_l0 = 1;
@@ -831,13 +831,13 @@ void ff_hevc_luma_mv_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW,
     pred_flag_index_l0 = LX;
     pred_flag_index_l1 = !LX;
 
-
     available_flag_lx_a0 = luma_mxa_mvp_mode(s, x0, y0, nPbW, nPbH, log2_cb_size,
                       part_idx, cand_left, pred_flag_index_l0, pred_flag_index_l1,
                       cand_bottom_left, &mxA, ref_idx_curr, ref_idx,
                       &is_scaled_flag_l0);
 
-    isAvailable_b0 = (cand_up_right && !(TAB_MVF(xb0_pu, yb0_pu).is_intra));
+    isAvailable_b0 = (cand_up_right && !TAB_MVF(xb0_pu, yb0_pu).is_intra);
+
     if (isAvailable_b0)
         isAvailable_b0 = check_prediction_block_available(s, log2_cb_size, x0, y0, nPbW,
                                                          nPbH, x0 + nPbW, y0 - 1, part_idx);
@@ -849,7 +849,7 @@ void ff_hevc_luma_mv_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW,
     }
 
     if (!available_flag_lx_b0) {
-        is_available_b1 = cand_up && !(TAB_MVF(xb1_pu, yb1_pu).is_intra);
+        is_available_b1 = cand_up && !TAB_MVF(xb1_pu, yb1_pu).is_intra;
 
         if (is_available_b1) {
             available_flag_lx_b0 = mv_mp_mode_mx(s, xb1_pu, yb1_pu, pred_flag_index_l0, &mxB, ref_idx_curr, ref_idx);
@@ -859,7 +859,7 @@ void ff_hevc_luma_mv_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW,
     }
 
     if (!available_flag_lx_b0) {
-        is_available_b2 = cand_up_left && !(TAB_MVF(xb2_pu, yb2_pu).is_intra);
+        is_available_b2 = cand_up_left && !TAB_MVF(xb2_pu, yb2_pu).is_intra;
 
         if (is_available_b2) {
             available_flag_lx_b0 = mv_mp_mode_mx(s, xb2_pu, yb2_pu, pred_flag_index_l0, &mxB, ref_idx_curr, ref_idx);
@@ -894,8 +894,8 @@ void ff_hevc_luma_mv_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW,
         }
     }
 
-    if (available_flag_lx_a0 && available_flag_lx_b0
-            && ((mxA.x != mxB.x) || (mxA.y != mxB.y))) {
+    if (available_flag_lx_a0 && available_flag_lx_b0 &&
+        (mxA.x != mxB.x || mxA.y != mxB.y)) {
         available_flag_lx_col = 0;
     } else {
         //temporal motion vector prediction candidate
@@ -916,8 +916,8 @@ void ff_hevc_luma_mv_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW,
         num_mvp_cand_lx++;
     }
 
-    if (available_flag_lx_a0 && available_flag_lx_b0
-            && ((mxA.x == mxB.x) && (mxA.y == mxB.y))) {
+    if (available_flag_lx_a0 && available_flag_lx_b0 &&
+        mxA.x == mxB.x && mxA.y == mxB.y) {
         num_mvp_cand_lx--;
     }
 
