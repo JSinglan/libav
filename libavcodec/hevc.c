@@ -2973,6 +2973,63 @@ static int hevc_update_thread_context(AVCodecContext *dst, const AVCodecContext 
     return 0;
 }
 
+static av_cold int hevc_decode_free(AVCodecContext *avctx)
+{
+    HEVCContext      *s  = avctx->priv_data;
+    HEVCLocalContext *lc = s->HEVClc;
+    int i, j;
+
+    if(avctx->internal->is_copy)
+        return 0;
+    pic_arrays_free(s);
+    av_freep(&s->rbsp_buffer);
+    av_freep(&s->skipped_bytes_pos);
+    av_frame_free(&s->tmp_frame);
+    av_freep(&s->cabac_state);
+    av_freep(&lc->edge_emu_buffer);
+    
+
+    for (i = 0; i < MAX_TRANSFORM_DEPTH; i++) {
+        av_freep(&lc->tt.cbf_cb[i]);
+        av_freep(&lc->tt.cbf_cr[i]);
+    }
+
+    if (s->ctb_entry_count) {
+        av_freep(&s->sh.entry_point_offset);
+        av_freep(&s->sh.offset);
+        av_freep(&s->sh.size);
+        if (s->enable_parallel_tiles)
+            av_freep(&s->HEVClcList[0]->save_boundary_strengths);
+
+        for (i = 1; i < s->threads_number; i++) {
+            lc = s->HEVClcList[i];
+            av_freep(&lc->edge_emu_buffer);
+            
+            for (j = 0; j < MAX_TRANSFORM_DEPTH; j++) {
+                av_freep(&lc->tt.cbf_cb[j]);
+                av_freep(&lc->tt.cbf_cr[j]);
+            }
+            if (s->enable_parallel_tiles)
+                av_freep(&lc->save_boundary_strengths);
+            av_freep(&s->HEVClcList[i]);
+            av_freep(&s->sList[i]);
+        }
+        av_freep(&s->ctb_entry_count);
+    }
+
+    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++)
+        av_frame_free(&s->DPB[i].frame);
+    for (i = 0; i < FF_ARRAY_ELEMS(s->vps_list); i++)
+        av_freep(&s->vps_list[i]);
+    for (i = 0; i < FF_ARRAY_ELEMS(s->sps_list); i++)
+        av_freep(&s->sps_list[i]);
+    for (i = 0; i < FF_ARRAY_ELEMS(s->pps_list); i++)
+        ff_hevc_pps_free(&s->pps_list[i]);
+
+    av_freep(&s->HEVClcList[0]);
+    return 0;
+}
+
 static av_cold int hevc_decode_init(AVCodecContext *avctx)
 {
     int i;
@@ -3024,64 +3081,6 @@ static av_cold int hevc_decode_init(AVCodecContext *avctx)
         return decode_nal_units(s, s->avctx->extradata, s->avctx->extradata_size);
     s->width = s->height = 0;
 
-    return 0;
-}
-
-static av_cold int hevc_decode_free(AVCodecContext *avctx)
-{
-    int i, j;
-    HEVCContext *s = avctx->priv_data;
-    HEVCLocalContext *lc = s->HEVClc;
-    if(avctx->internal->is_copy)
-        return 0;
-    pic_arrays_free(s);
-    av_freep(&s->rbsp_buffer);
-    av_freep(&s->skipped_bytes_pos);
-    av_frame_free(&s->tmp_frame);
-    av_freep(&s->cabac_state);
-    av_freep(&lc->edge_emu_buffer);
-    
-
-    for (i = 0; i < MAX_TRANSFORM_DEPTH; i++) {
-        av_freep(&lc->tt.cbf_cb[i]);
-        av_freep(&lc->tt.cbf_cr[i]);
-    }
-
-    if (s->ctb_entry_count) {
-        av_freep(&s->sh.entry_point_offset);
-        av_freep(&s->sh.offset);
-        av_freep(&s->sh.size);
-        if (s->enable_parallel_tiles)
-            av_freep(&s->HEVClcList[0]->save_boundary_strengths);
-
-        for (i = 1; i < s->threads_number; i++) {
-            lc = s->HEVClcList[i];
-            av_freep(&lc->edge_emu_buffer);
-            
-            for (j = 0; j < MAX_TRANSFORM_DEPTH; j++) {
-                av_freep(&lc->tt.cbf_cb[j]);
-                av_freep(&lc->tt.cbf_cr[j]);
-            }
-            if (s->enable_parallel_tiles)
-                av_freep(&lc->save_boundary_strengths);
-            av_freep(&s->HEVClcList[i]);
-            av_freep(&s->sList[i]);
-        }
-        av_freep(&s->ctb_entry_count);
-    }
-    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
-        av_frame_free(&s->DPB[i].frame);
-    }
-    for (i = 0; i < MAX_VPS_COUNT; i++) {
-        av_freep(&s->vps_list[i]);
-    }
-    for (i = 0; i < MAX_SPS_COUNT; i++) {
-        av_freep(&s->sps_list[i]);
-    }
-    for (i = 0; i < MAX_PPS_COUNT; i++)
-        ff_hevc_pps_free(&s->pps_list[i]);
-
-    av_freep(&s->HEVClcList[0]);
     return 0;
 }
 

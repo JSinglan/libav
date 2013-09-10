@@ -35,7 +35,6 @@ int ff_hevc_decode_short_term_rps(HEVCLocalContext *lc, int idx, SPS *sps)
 {
     int delta_idx = 1;
     int delta_rps;
-    uint8_t used_by_curr_pic_flag;
     uint8_t use_delta_flag = 0;
     int delta_poc;
     int k0 = 0;
@@ -65,7 +64,7 @@ int ff_hevc_decode_short_term_rps(HEVCLocalContext *lc, int idx, SPS *sps)
         abs_delta_rps = get_ue_golomb(gb) + 1;
         delta_rps = (1 - (delta_rps_sign<<1)) * abs_delta_rps;
         for (i = 0; i <= rps_ridx->num_delta_pocs; i++) {
-            used_by_curr_pic_flag = get_bits1(gb);
+            int used_by_curr_pic_flag = get_bits1(gb);
             rps->used[k] = used_by_curr_pic_flag;
             if (!used_by_curr_pic_flag)
                 use_delta_flag = get_bits1(gb);

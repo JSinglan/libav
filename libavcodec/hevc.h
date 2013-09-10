@@ -450,7 +450,7 @@ typedef struct SliceHeader {
     uint8_t colour_plane_id;
 
     int pic_order_cnt_lsb;
-    ShortTermRPS *short_term_rps;
+    const ShortTermRPS *short_term_rps;
     RefPicList refPocList[5];
     LongTermRPS long_term_rps;
     uint8_t ref_pic_list_modification_flag_lx[2];
@@ -785,10 +785,8 @@ typedef struct HEVCContext {
 
     struct HEVCContext  *sList[MAX_NB_THREADS];
 
-
     HEVCLocalContext    *HEVClcList[MAX_NB_THREADS];
     HEVCLocalContext    *HEVClc;
-
 
     uint8_t             threads_number;
     int                 decode_checksum_sei;
@@ -797,13 +795,13 @@ typedef struct HEVCContext {
     int                 width;
     int                 height;
 
-    uint8_t *cabac_state; //
+    uint8_t *cabac_state;
 
     AVFrame *frame;
     AVFrame *sao_frame;
     AVFrame *tmp_frame;
     VPS *vps;
-    SPS *sps;
+    const SPS *sps;
     PPS *pps;
     VPS *vps_list[MAX_VPS_COUNT];
     SPS *sps_list[MAX_SPS_COUNT];
@@ -822,8 +820,8 @@ typedef struct HEVCContext {
     int max_ra;
     int bs_width;
     int bs_height;
-    
-    int * ctb_entry_count;
+
+    int *ctb_entry_count;
     int coding_tree_count;
     int is_decoded;
     int SliceAddrRs;
@@ -916,7 +914,6 @@ int ff_hevc_sao_offset_abs_decode(HEVCContext *s);
 int ff_hevc_sao_offset_sign_decode(HEVCContext *s);
 int ff_hevc_sao_eo_class_decode(HEVCContext *s);
 int ff_hevc_end_of_slice_flag_decode(HEVCContext *s);
-int ff_hevc_end_of_sub_stream_one_bit_decode(HEVCContext *s);
 int ff_hevc_cu_transquant_bypass_flag_decode(HEVCContext *s);
 int ff_hevc_skip_flag_decode(HEVCContext *s, int x0, int y0, int x_cb, int y_cb);
 int ff_hevc_pred_mode_decode(HEVCContext *s);

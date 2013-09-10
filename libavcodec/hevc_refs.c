@@ -171,8 +171,8 @@ int ff_hevc_set_new_ref(HEVCContext *s, AVFrame **frame, int poc)
             ref->poc        = poc;
             ref->frame->pts = s->pts;
 
-            ref->flags      = HEVC_FRAME_FLAG_OUTPUT | HEVC_FRAME_FLAG_SHORT_REF;
-            ref->sequence   = s->seq_decode;
+            ref->flags    = HEVC_FRAME_FLAG_OUTPUT | HEVC_FRAME_FLAG_SHORT_REF;
+            ref->sequence = s->seq_decode;
             return ff_get_buffer(s->avctx, *frame, AV_GET_BUFFER_FLAG_REF);
         }
     }
@@ -341,7 +341,7 @@ void ff_hevc_set_ref_poc_list(HEVCContext *s)
     int i;
     int j = 0;
     int k = 0;
-    ShortTermRPS *rps        = s->sh.short_term_rps;
+    const ShortTermRPS *rps  = s->sh.short_term_rps;
     LongTermRPS *long_rps    = &s->sh.long_term_rps;
     RefPicList   *refPocList = s->sh.refPocList;
     int MaxPicOrderCntLsb = 1 << s->sps->log2_max_poc_lsb;
@@ -401,8 +401,8 @@ int ff_hevc_get_num_poc(HEVCContext *s)
 {
     int ret = 0;
     int i;
-    ShortTermRPS *rps     = s->sh.short_term_rps;
-    LongTermRPS *long_rps = &s->sh.long_term_rps;
+    const ShortTermRPS *rps = s->sh.short_term_rps;
+    LongTermRPS *long_rps   = &s->sh.long_term_rps;
 
     if (rps) {
         for (i = 0; i < rps->num_negative_pics; i++)
