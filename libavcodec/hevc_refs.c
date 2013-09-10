@@ -185,10 +185,9 @@ int ff_hevc_output_frame(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
 {
     int nb_output = 0;
     int min_poc   = 0xFFFF;
-    int i, min_idx, ret;
-    uint8_t run = 1;
-    min_idx = 0;
-    while (run) {
+    int i, j, min_idx, ret;
+
+    do {
         for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
             HEVCFrame *frame = &s->DPB[i];
             if ((frame->flags & HEVC_FRAME_FLAG_OUTPUT) &&
@@ -208,9 +207,11 @@ int ff_hevc_output_frame(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
 
         if (nb_output) {
             HEVCFrame *frame = &s->DPB[min_idx];
+            AVFrame *dst = out;
+            AVFrame *src = frame->frame;
 
             *poc_display = frame->poc;
-            ret = av_frame_ref(out, frame->frame);
+            ret = av_frame_ref(out, src);
             ff_hevc_unref_frame(s, frame, HEVC_FRAME_FLAG_OUTPUT);
             if (ret < 0)
                 return ret;
@@ -219,9 +220,8 @@ int ff_hevc_output_frame(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
 
         if (s->seq_output != s->seq_decode)
             s->seq_output = (s->seq_output + 1) & 0xff;
-        else
-            run = 0;
-    }
+    } while (s->seq_output != s->seq_decode);
+
     return 0;
 }
 
