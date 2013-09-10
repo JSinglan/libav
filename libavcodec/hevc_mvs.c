@@ -127,100 +127,97 @@ static int compareMVrefidx(MvField A, MvField B)
     return 0;
 }
 
+static av_always_inline void mv_scale(Mv *dst, Mv *src, int td, int tb)
+{
+    int tx, scale_factor;
+
+    td = av_clip_int8_c(td);
+    tb = av_clip_int8_c(tb);
+    tx = (0x4000 + abs(td / 2)) / td;
+    scale_factor = av_clip_c((tb * tx + 32) >> 6, -4096, 4095);
+    dst->x = av_clip_int16_c((scale_factor * src->x + 127 +
+                             (scale_factor * src->x < 0)) >> 8);
+    dst->y = av_clip_int16_c((scale_factor * src->y + 127 +
+                             (scale_factor * src->y < 0)) >> 8);
+}
+
+static int check_mvset(Mv *mvLXCol, Mv *mvCol,
+                       int colPic, int poc,
+                       RefPicList *refPicList, int X, int refIdxLx,
+                       RefPicList *refPicList_col, int listCol, int refidxCol)
+{
+    // Assuming no long term pictures in version 1 of the decoder
+    int currIsLongTerm = refPicList[X].is_long_term[refIdxLx];
+    int colIsLongTerm  = refPicList_col[listCol].is_long_term[refidxCol];
+    int colPocDiff, curPocDiff;
+
+    if (currIsLongTerm != colIsLongTerm) {
+        mvLXCol->x = 0;
+        mvLXCol->y = 0;
+        return 0;
+    }
+
+    colPocDiff = colPic - refPicList_col[listCol].list[refidxCol];
+
+    if (!(curPocDiff = poc - refPicList[X].list[refIdxLx]))
+        colPocDiff = 1; // error resilience
+
+    if (currIsLongTerm || colPocDiff == curPocDiff) {
+        mvLXCol->x = mvCol->x;
+        mvLXCol->y = mvCol->y;
+    } else {
+        mv_scale(mvLXCol, mvCol, colPocDiff, curPocDiff);
+    }
+    return 1;
+}
+
+#define CHECK_MVSET(l) \
+    check_mvset(mvLXCol, temp_col.mv + l, \
+                colPic, s->poc, \
+                refPicList, X, refIdxLx, \
+                refPicList_col, L##l, temp_col.ref_idx[l])
+
 // derive the motion vectors section 8.5.3.1.8
 static int derive_temporal_colocated_mvs(HEVCContext *s, MvField temp_col,
-                                         int refIdxLx, Mv* mvLXCol, int X, int colPic,
-                                         RefPicList* refPicList_col)
+                                         int refIdxLx, Mv* mvLXCol, int X,
+                                         int colPic, RefPicList* refPicList_col)
 {
-    int availableFlagLXCol = 0;
-    Mv mvCol;
-    int listCol;
-    int refidxCol;
-    int check_mvset = 0;
     RefPicList *refPicList = s->ref->refPicList;
 
     if (temp_col.is_intra) {
         mvLXCol->x = 0;
         mvLXCol->y = 0;
-        availableFlagLXCol = 0;
-    } else {
-        if ((temp_col.pred_flag & 1) == 0) {
-            mvCol = temp_col.mv[1];
-            refidxCol = temp_col.ref_idx[1];
-            listCol = L1;
-            check_mvset = 1;
-        } else if (temp_col.pred_flag == 1) {
-            mvCol = temp_col.mv[0];
-            refidxCol = temp_col.ref_idx[0];
-            listCol = L0;
-            check_mvset = 1;
-        } else if (temp_col.pred_flag == 3) {
-            int check_diffpicount = 0;
-            int i = 0;
-            for (i = 0; i < refPicList[0].numPic; i++) {
-                if (refPicList[0].list[i] > s->poc)
-                    check_diffpicount++;
-            }
-            for (i = 0; i < refPicList[1].numPic; i++) {
-                if (refPicList[1].list[i] > s->poc)
-                    check_diffpicount++;
-            }
-            if ((check_diffpicount == 0) && (X == 0)) {
-                mvCol = temp_col.mv[0];
-                refidxCol = temp_col.ref_idx[0];
-                listCol = L0;
-            } else if ((check_diffpicount == 0) && (X == 1)) {
-                mvCol = temp_col.mv[1];
-                refidxCol = temp_col.ref_idx[1];
-                listCol = L1;
-            } else {
-                if (s->sh.collocated_from_l0_flag == 0) {
-                    mvCol = temp_col.mv[0];
-                    refidxCol = temp_col.ref_idx[0];
-                    listCol = L0;
-                } else {
-                    mvCol = temp_col.mv[1];
-                    refidxCol = temp_col.ref_idx[1];
-                    listCol = L1;
-                }
-            }
-            check_mvset = 1;
+        return 0;
+    }
+    
+    if ((temp_col.pred_flag & 1) == 0)
+        return CHECK_MVSET(1);
+    else if (temp_col.pred_flag == 1)
+         return CHECK_MVSET(0);
+    else if (temp_col.pred_flag == 3) {
+        int check_diffpicount = 0;
+        int i = 0;
+        for (i = 0; i < refPicList[0].numPic; i++) {
+            if (refPicList[0].list[i] > s->poc)
+                check_diffpicount++;
         }
-        // Assuming no long term pictures in version 1 of the decoder
-        if (check_mvset == 1) {
-            int currIsLongTerm = refPicList[X].is_long_term[refIdxLx];
-            int colIsLongTerm = refPicList_col[listCol].is_long_term[refidxCol];
-            if (currIsLongTerm != colIsLongTerm) {
-                availableFlagLXCol = 0;
-                mvLXCol->x = 0;
-                mvLXCol->y = 0;
-            } else {
-                int colPocDiff = colPic - refPicList_col[listCol].list[refidxCol];
-                int curPocDiff = s->poc - refPicList[X].list[refIdxLx];
-                colPocDiff = colPocDiff == 0 ? 1 : colPocDiff; //error resilience
-                availableFlagLXCol = 1;
-                if (currIsLongTerm || colPocDiff == curPocDiff) {
-                    mvLXCol->x = mvCol.x;
-                    mvLXCol->y = mvCol.y;
-                } else {
-                    int td = av_clip_c(colPocDiff, -128, 127);
-                    int tb = av_clip_c(curPocDiff, -128, 127);
-                    int tx = (0x4000 + abs(td / 2)) / td;
-                    int distScaleFactor = av_clip_c((tb * tx + 32) >> 6, -4096,
-                            4095);
-                    mvLXCol->x = av_clip_c(
-                            (distScaleFactor * mvCol.x + 127
-                                    + (distScaleFactor * mvCol.x < 0)) >> 8,
-                            -32768, 32767);
-                    mvLXCol->y = av_clip_c(
-                            (distScaleFactor * mvCol.y + 127
-                                    + (distScaleFactor * mvCol.y < 0)) >> 8,
-                            -32768, 32767);
-                }
-            }
+        for (i = 0; i < refPicList[1].numPic; i++) {
+            if (refPicList[1].list[i] > s->poc)
+                check_diffpicount++;
+        }
+        if (check_diffpicount == 0 && X == 0)
+            return CHECK_MVSET(0);
+        else if (check_diffpicount == 0 && X == 1)
+            return CHECK_MVSET(1);
+        else {
+            if (s->sh.collocated_from_l0_flag == 0)
+                return CHECK_MVSET(0);
+            else
+                return CHECK_MVSET(1);
         }
     }
-    return availableFlagLXCol;
+
+    return 0;
 }
 
 /*
@@ -664,15 +661,11 @@ static av_always_inline void dist_scale(HEVCContext *s, Mv * mv,
 {
     RefPicList *refPicList = s->ref->refPicList;
     MvField *tab_mvf = s->ref->tab_mvf;
-    if (refPicList[elist].list[TAB_MVF(x, y).ref_idx[elist]] !=
-        refPicList[ref_idx_curr].list[ref_idx]) {
-        int td = av_clip_int8(s->poc - refPicList[elist].list[TAB_MVF(x, y).ref_idx[elist]]);
-        int tb = av_clip_int8(s->poc - refPicList[ref_idx_curr].list[ref_idx]);
-        int tx = (0x4000 + abs(td/2)) / td;
-        int distScaleFactor = av_clip_c((tb * tx + 32) >> 6, -4096, 4095);
-        mv->x = av_clip_int16((distScaleFactor * mv->x + 127 + (distScaleFactor * mv->x < 0)) >> 8);
-        mv->y = av_clip_int16((distScaleFactor * mv->y + 127 + (distScaleFactor * mv->y < 0)) >> 8);
-    }
+    int ref_pic_elist = refPicList[elist].list[TAB_MVF(x, y).ref_idx[elist]];
+    int ref_pic_curr  = refPicList[ref_idx_curr].list[ref_idx];
+
+    if (ref_pic_elist != ref_pic_curr)
+        mv_scale(mv, mv, s->poc - ref_pic_elist, s->poc - ref_pic_curr);
 }
 
 static int mv_mp_mode_mx(HEVCContext *s, int x, int y, int pred_flag_index,
