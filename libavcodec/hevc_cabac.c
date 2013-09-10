@@ -345,15 +345,15 @@ static void load_states(HEVCContext *s)
 
 static void cabac_reinit(HEVCLocalContext *lc)
 {
-    skip_bytes(lc->cc,0);
+    skip_bytes(&lc->cc,0);
 }
 
 static void cabac_init_decoder(HEVCContext *s)
 {
-    GetBitContext *gb = s->HEVClc->gb;
+    GetBitContext *gb = &s->HEVClc->gb;
     skip_bits(gb, 1);
     align_get_bits(gb);
-    ff_init_cabac_decoder(s->HEVClc->cc,
+    ff_init_cabac_decoder(&s->HEVClc->cc,
                           gb->buffer + get_bits_count(gb) / 8,
                           (get_bits_left(gb) + 7) / 8);
 }
@@ -400,7 +400,7 @@ void ff_hevc_cabac_init(HEVCContext *s, int ctb_addr_ts)
         if (s->pps->tiles_enabled_flag &&
             (s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[ctb_addr_ts - 1])) {
             if (s->threads_number == 1)
-            	cabac_reinit(s->HEVClc);
+                cabac_reinit(s->HEVClc);
             else
                 cabac_init_decoder(s);
             cabac_init_state(s);
@@ -422,7 +422,7 @@ void ff_hevc_cabac_init(HEVCContext *s, int ctb_addr_ts)
     }
 }
 
-#define GET_CABAC(ctx) get_cabac(s->HEVClc->cc, &s->HEVClc->cabac_state[ctx])
+#define GET_CABAC(ctx) get_cabac(&s->HEVClc->cc, &s->HEVClc->cabac_state[ctx])
 
 int ff_hevc_sao_merge_flag_decode(HEVCContext *s)
 {
@@ -434,7 +434,7 @@ int ff_hevc_sao_type_idx_decode(HEVCContext *s)
     if (!GET_CABAC(elem_offset[SAO_TYPE_IDX]))
         return 0;
 
-    if (!get_cabac_bypass(s->HEVClc->cc))
+    if (!get_cabac_bypass(&s->HEVClc->cc))
         return SAO_BAND;
     return SAO_EDGE;
 }
@@ -442,10 +442,10 @@ int ff_hevc_sao_type_idx_decode(HEVCContext *s)
 int ff_hevc_sao_band_position_decode(HEVCContext *s)
 {
     int i;
-    int value = get_cabac_bypass(s->HEVClc->cc);
+    int value = get_cabac_bypass(&s->HEVClc->cc);
 
     for (i = 0; i < 4; i++)
-        value = (value << 1) | get_cabac_bypass(s->HEVClc->cc);
+        value = (value << 1) | get_cabac_bypass(&s->HEVClc->cc);
     return value;
 }
 
@@ -454,31 +454,31 @@ int ff_hevc_sao_offset_abs_decode(HEVCContext *s)
     int i = 0;
     int length = (1 << (FFMIN(s->sps->bit_depth, 10) - 5)) - 1;
 
-    while (i < length && get_cabac_bypass(s->HEVClc->cc))
+    while (i < length && get_cabac_bypass(&s->HEVClc->cc))
         i++;
     return i;
 }
 
 int ff_hevc_sao_offset_sign_decode(HEVCContext *s)
 {
-    return get_cabac_bypass(s->HEVClc->cc);
+    return get_cabac_bypass(&s->HEVClc->cc);
 }
 
 int ff_hevc_sao_eo_class_decode(HEVCContext *s)
 {
-    int ret = (get_cabac_bypass(s->HEVClc->cc) << 1);
-    ret    |=  get_cabac_bypass(s->HEVClc->cc);
+    int ret = (get_cabac_bypass(&s->HEVClc->cc) << 1);
+    ret    |=  get_cabac_bypass(&s->HEVClc->cc);
     return ret;
 }
 
 int ff_hevc_end_of_slice_flag_decode(HEVCContext *s)
 {
-    return get_cabac_terminate(s->HEVClc->cc);
+    return get_cabac_terminate(&s->HEVClc->cc);
 }
 
 int ff_hevc_end_of_sub_stream_one_bit_decode(HEVCContext *s)
 {
-    return get_cabac_terminate(s->HEVClc->cc);
+    return get_cabac_terminate(&s->HEVClc->cc);
 }
 int ff_hevc_cu_transquant_bypass_flag_decode(HEVCContext *s)
 {
@@ -511,7 +511,7 @@ int ff_hevc_cu_qp_delta_abs(HEVCContext *s)
     }
     if (prefix_val >= 5) {
         int k = 0;
-        while (k < CABAC_MAX_BIN && get_cabac_bypass(s->HEVClc->cc)) {
+        while (k < CABAC_MAX_BIN && get_cabac_bypass(&s->HEVClc->cc)) {
             suffix_val += 1 << k;
             k++;
         }
@@ -519,14 +519,14 @@ int ff_hevc_cu_qp_delta_abs(HEVCContext *s)
             av_log(s->avctx, AV_LOG_ERROR, "CABAC_MAX_BIN : %d\n", k);
 
         while (k--)
-            suffix_val += get_cabac_bypass(s->HEVClc->cc) << k;
+            suffix_val += get_cabac_bypass(&s->HEVClc->cc) << k;
     }
     return prefix_val + suffix_val;
 }
 
 int ff_hevc_cu_qp_delta_sign_flag(HEVCContext *s)
 {
-    return get_cabac_bypass(s->HEVClc->cc);
+    return get_cabac_bypass(&s->HEVClc->cc);
 }
 
 int ff_hevc_pred_mode_decode(HEVCContext *s)
@@ -577,21 +577,21 @@ int ff_hevc_part_mode_decode(HEVCContext *s, int log2_cb_size)
     if (GET_CABAC(elem_offset[PART_MODE] + 1)) { // 01X, 01XX
         if (GET_CABAC(elem_offset[PART_MODE] + 3)) // 011
             return PART_2NxN;
-        if (get_cabac_bypass(s->HEVClc->cc)) // 0101
+        if (get_cabac_bypass(&s->HEVClc->cc)) // 0101
             return PART_2NxnD;
         return PART_2NxnU; // 0100
     }
 
     if (GET_CABAC(elem_offset[PART_MODE] + 3)) // 001
         return PART_Nx2N;
-    if (get_cabac_bypass(s->HEVClc->cc)) // 0001
+    if (get_cabac_bypass(&s->HEVClc->cc)) // 0001
         return PART_nRx2N;
     return  PART_nLx2N; // 0000
 }
 
 int ff_hevc_pcm_flag_decode(HEVCContext *s)
 {
-    return get_cabac_terminate(s->HEVClc->cc);
+    return get_cabac_terminate(&s->HEVClc->cc);
 }
 
 int ff_hevc_prev_intra_luma_pred_flag_decode(HEVCContext *s)
@@ -602,7 +602,7 @@ int ff_hevc_prev_intra_luma_pred_flag_decode(HEVCContext *s)
 int ff_hevc_mpm_idx_decode(HEVCContext *s)
 {
     int i = 0;
-    while (i < 2 && get_cabac_bypass(s->HEVClc->cc))
+    while (i < 2 && get_cabac_bypass(&s->HEVClc->cc))
         i++;
     return i;
 }
@@ -610,10 +610,10 @@ int ff_hevc_mpm_idx_decode(HEVCContext *s)
 int ff_hevc_rem_intra_luma_pred_mode_decode(HEVCContext *s)
 {
     int i;
-    int value = get_cabac_bypass(s->HEVClc->cc);
+    int value = get_cabac_bypass(&s->HEVClc->cc);
 
     for (i = 0; i < 4; i++)
-        value = (value << 1) | get_cabac_bypass(s->HEVClc->cc);
+        value = (value << 1) | get_cabac_bypass(&s->HEVClc->cc);
     return value;
 }
 
@@ -623,8 +623,8 @@ int ff_hevc_intra_chroma_pred_mode_decode(HEVCContext *s)
     if (!GET_CABAC(elem_offset[INTRA_CHROMA_PRED_MODE]))
         return 4;
 
-    ret  = (get_cabac_bypass(s->HEVClc->cc) << 1);
-    ret |=  get_cabac_bypass(s->HEVClc->cc);
+    ret  = (get_cabac_bypass(&s->HEVClc->cc) << 1);
+    ret |=  get_cabac_bypass(&s->HEVClc->cc);
     return ret;
 }
 
@@ -633,7 +633,7 @@ int ff_hevc_merge_idx_decode(HEVCContext *s)
     int i = GET_CABAC(elem_offset[MERGE_IDX]);
 
     if (i != 0) {
-        while (i < s->sh.max_num_merge_cand-1 && get_cabac_bypass(s->HEVClc->cc))
+        while (i < s->sh.max_num_merge_cand-1 && get_cabac_bypass(&s->HEVClc->cc))
             i++;
     }
     return i;
@@ -663,7 +663,7 @@ int ff_hevc_ref_idx_lx_decode(HEVCContext *s, int num_ref_idx_lx)
     while (i < max_ctx && GET_CABAC(elem_offset[REF_IDX_L0] + i))
         i++;
     if (i==2) {
-        while (i < max && get_cabac_bypass(s->HEVClc->cc))
+        while (i < max && get_cabac_bypass(&s->HEVClc->cc))
             i++;
     }
 
@@ -695,20 +695,20 @@ int ff_hevc_mvd_decode(HEVCContext *s)
     int ret = 2;
     int k = 1;
 
-    while (k < CABAC_MAX_BIN && get_cabac_bypass(s->HEVClc->cc)) {
+    while (k < CABAC_MAX_BIN && get_cabac_bypass(&s->HEVClc->cc)) {
         ret += 1 << k;
         k++;
     }
     if (k == CABAC_MAX_BIN)
         av_log(s->avctx, AV_LOG_ERROR, "CABAC_MAX_BIN : %d\n", k);
     while (k--)
-        ret += get_cabac_bypass(s->HEVClc->cc) << k;
-    return get_cabac_bypass_sign(s->HEVClc->cc, -ret);
+        ret += get_cabac_bypass(&s->HEVClc->cc) << k;
+    return get_cabac_bypass_sign(&s->HEVClc->cc, -ret);
 }
 
 int ff_hevc_mvd_sign_flag_decode(HEVCContext *s)
 {
-    return get_cabac_bypass_sign(s->HEVClc->cc, -1);
+    return get_cabac_bypass_sign(&s->HEVClc->cc, -1);
 }
 
 int ff_hevc_split_transform_flag_decode(HEVCContext *s, int log2_trafo_size)
@@ -765,10 +765,10 @@ int ff_hevc_last_significant_coeff_suffix_decode(HEVCContext *s,
 {
     int i;
     int length = (last_significant_coeff_prefix >> 1) - 1;
-    int value = get_cabac_bypass(s->HEVClc->cc);
+    int value = get_cabac_bypass(&s->HEVClc->cc);
 
     for (i = 1; i < length; i++)
-        value = (value << 1) | get_cabac_bypass(s->HEVClc->cc);
+        value = (value << 1) | get_cabac_bypass(&s->HEVClc->cc);
     return value;
 }
 
@@ -903,17 +903,17 @@ int ff_hevc_coeff_abs_level_remaining(HEVCContext *s, int first_elem, int base_l
         lc->last_coeff_abs_level_remaining = 0;
     }
 
-    while (prefix < CABAC_MAX_BIN && get_cabac_bypass(s->HEVClc->cc))
+    while (prefix < CABAC_MAX_BIN && get_cabac_bypass(&s->HEVClc->cc))
         prefix++;
     if (prefix == CABAC_MAX_BIN)
         av_log(s->avctx, AV_LOG_ERROR, "CABAC_MAX_BIN : %d\n", prefix);
     if (prefix < 3) {
         for (i = 0; i < lc->c_rice_param; i++)
-            suffix = (suffix << 1) | get_cabac_bypass(s->HEVClc->cc);
+            suffix = (suffix << 1) | get_cabac_bypass(&s->HEVClc->cc);
         lc->last_coeff_abs_level_remaining = (prefix << lc->c_rice_param) + suffix;
     } else {
         for (i = 0; i < prefix - 3 + lc->c_rice_param; i++)
-            suffix = (suffix << 1) | get_cabac_bypass(s->HEVClc->cc);
+            suffix = (suffix << 1) | get_cabac_bypass(&s->HEVClc->cc);
         lc->last_coeff_abs_level_remaining = (((1 << (prefix - 3)) + 3 - 1)
                                               << lc->c_rice_param) + suffix;
     }
@@ -931,6 +931,6 @@ int ff_hevc_coeff_sign_flag(HEVCContext *s, uint8_t nb)
     int ret = 0;
 
     for (i = 0; i < nb; i++)
-        ret = (ret << 1) | get_cabac_bypass(s->HEVClc->cc);
+        ret = (ret << 1) | get_cabac_bypass(&s->HEVClc->cc);
     return ret;
 }

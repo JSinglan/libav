@@ -746,14 +746,14 @@ typedef struct Filter_data {
 } Filter_data;
 
 typedef struct HEVCLocalContext {
-    uint8_t *cabac_state;
+    uint8_t cabac_state[HEVC_CONTEXTS];
     int ctx_set;
     int greater1_ctx;
     int last_coeff_abs_level_greater1_flag;
     int c_rice_param;
     int last_coeff_abs_level_remaining;
-    GetBitContext *gb; //
-    CABACContext *cc; //
+    GetBitContext gb;
+    CABACContext cc;
     TransformTree tt;
     TransformUnit tu;
     ResidualCoding rc;
