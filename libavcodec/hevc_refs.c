@@ -186,6 +186,8 @@ int ff_hevc_output_frame(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
     int nb_output = 0;
     int min_poc   = 0xFFFF;
     int i, j, min_idx, ret;
+    AVFrame *dst, *src;
+    int step_x, step_y;
 
     do {
         for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
@@ -207,14 +209,24 @@ int ff_hevc_output_frame(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
 
         if (nb_output) {
             HEVCFrame *frame = &s->DPB[min_idx];
-            AVFrame *dst = out;
-            AVFrame *src = frame->frame;
+
+            dst = out;
+            src = frame->frame;
 
             *poc_display = frame->poc;
-            ret = av_frame_ref(out, src);
-            ff_hevc_unref_frame(s, frame, HEVC_FRAME_FLAG_OUTPUT);
+            frame->flags &= ~HEVC_FRAME_FLAG_OUTPUT;
+            ret = av_frame_ref(dst, src);
+
             if (ret < 0)
                 return ret;
+
+            //TODO: 2 is only valid for 420
+            step_x = step_y = 2;
+            for (j = 0; j < 3; j++) {
+                int off = (((step_x * s->sps->pic_conf_win.left_offset) >> s->sps->hshift[j]) << s->sps->pixel_shift) +
+                          (((step_y * s->sps->pic_conf_win.top_offset) >> s->sps->vshift[j]) * dst->linesize[j]);
+                dst->data[j] += off;
+            }
             return 1;
         }
 
