@@ -80,19 +80,6 @@ static int z_scan_block_avail(HEVCContext *s, int xCurr, int yCurr,
     return N <= Curr;
 }
 
-
-static int same_prediction_block(HEVCLocalContext *lc, int log2_cb_size,
-                                 int x0, int y0, int nPbW, int nPbH,
-                                 int xA1, int yA1, int partIdx)
-{
-    if ((nPbW << 1 == (1 << log2_cb_size)) &&
-        ((nPbH << 1) == (1 << log2_cb_size)) && (partIdx == 1) &&
-        ((lc->cu.x + nPbW) > xA1) && ((lc->cu.y + nPbH) <= yA1))
-        return 0;
-    else
-        return 1;
-}
-
 /*
  * 6.4.2 Derivation process for prediction block availability
  */
@@ -101,12 +88,15 @@ static int check_prediction_block_available(HEVCContext *s, int log2_cb_size,
                                             int xA1, int yA1, int partIdx)
 {
     HEVCLocalContext *lc = &s->HEVClc;
-    if ((lc->cu.x < xA1) && (lc->cu.y < yA1) &&
-        ((lc->cu.x + (1 << log2_cb_size)) > xA1) &&
-        ((lc->cu.y + (1 << log2_cb_size)) > yA1))
-        return same_prediction_block(lc, log2_cb_size, x0, y0,
-                                     nPbW, nPbH,
-                                     xA1, yA1, partIdx);
+    if (lc->cu.x < xA1 &&
+        lc->cu.y < yA1 &&
+        (lc->cu.x + (1 << log2_cb_size)) > xA1 &&
+        (lc->cu.y + (1 << log2_cb_size)) > yA1)
+        return !(partIdx == 1 &&
+                 nPbW << 1 == 1 << log2_cb_size &&
+                 nPbH << 1 == 1 << log2_cb_size &&
+                 (lc->cu.x + nPbW) > xA1 &&
+                 (lc->cu.y + nPbH) <= yA1);
     else
         return z_scan_block_avail(s, x0, y0, xA1, yA1);
 }
@@ -115,10 +105,9 @@ static int check_prediction_block_available(HEVCContext *s, int log2_cb_size,
 static int isDiffMER(HEVCContext *s, int xN, int yN, int xP, int yP)
 {
     uint8_t plevel = s->pps->log2_parallel_merge_level;
-    if (((xN >> plevel) == (xP >> plevel))
-            && ((yN >> plevel) == (yP >> plevel)))
-        return 1;
-    return 0;
+
+    return xN >> plevel == xP >> plevel &&
+           yN >> plevel == yP >> plevel;
 }
 
 #define MATCH(x) (A.x == B.x)
