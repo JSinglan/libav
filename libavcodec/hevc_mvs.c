@@ -724,6 +724,21 @@ static int mv_mp_mode_mx_lt(HEVCContext *s, int x, int y, int pred_flag_index,
     return 0;
 }
 
+#define AVAILABLE(cand, v) \
+    cand && !TAB_MVF(x##v##_pu, y##v##_pu).is_intra
+
+#define PRED_BLOCK_AVAILABLE(v) \
+    check_prediction_block_available(s, log2_cb_size, \
+                                     x0, y0, nPbW, nPbH, \
+                                     x##v, y##v, part_idx);
+
+#define MP_MX(v, pred, mx) \
+    mv_mp_mode_mx(s, x##v##_pu, y##v##_pu, pred, mx, ref_idx_curr, ref_idx)
+
+#define MP_MX_LT(v, pred, mx) \
+    mv_mp_mode_mx_lt(s, x##v##_pu, y##v##_pu, pred, mx, ref_idx_curr, ref_idx)
+
+
 static int luma_mxa_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW, int nPbH, int log2_cb_size,
                              int part_idx, int cand_left, int pred_flag_index_l0, int pred_flag_index_l1,
                              int cand_bottom_left, Mv *mv, int ref_idx_curr, int ref_idx,
@@ -740,7 +755,7 @@ static int luma_mxa_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW, int nPbH,
     int xa1_pu;
     int ya1_pu;
     int is_available_a1;
-    is_available_a0 = (cand_bottom_left && !TAB_MVF(xa0_pu, ya0_pu).is_intra);
+    is_available_a0 = AVAILABLE(cand_bottom_left, a0);
     if (is_available_a0)
         is_available_a0 = check_prediction_block_available(s, log2_cb_size, x0, y0, nPbW,
                                                            nPbH, x0 - 1, y0 + nPbH, part_idx);
@@ -753,27 +768,27 @@ static int luma_mxa_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW, int nPbH,
     }
     xa1_pu = (x0 - 1) >> s->sps->log2_min_pu_size;
     ya1_pu = (y0 + nPbH - 1) >> s->sps->log2_min_pu_size;
-    is_available_a1 = cand_left && !TAB_MVF(xa1_pu, ya1_pu).is_intra;
+    is_available_a1 = AVAILABLE(cand_left, a1);
 
     if (is_available_a1) {
         *is_scaled_flag_l0 = 1;
-        if (mv_mp_mode_mx(s, xa1_pu, ya1_pu, pred_flag_index_l0, mv, ref_idx_curr, ref_idx))
+        if (MP_MX(a1, pred_flag_index_l0, mv))
             return 1;
-        if (mv_mp_mode_mx(s, xa1_pu, ya1_pu, pred_flag_index_l1, mv, ref_idx_curr, ref_idx))
+        if (MP_MX(a1, pred_flag_index_l1, mv))
             return 1;
     }
 
     if (is_available_a0) {
-        if (mv_mp_mode_mx_lt(s, xa0_pu, ya0_pu, pred_flag_index_l0, mv, ref_idx_curr, ref_idx))
+        if (MP_MX_LT(a0, pred_flag_index_l0, mv))
             return 1;
-        if (mv_mp_mode_mx_lt(s, xa0_pu, ya0_pu, pred_flag_index_l1, mv, ref_idx_curr, ref_idx))
+        if (MP_MX_LT(a0, pred_flag_index_l1, mv))
             return 1;
     }
 
     if (is_available_a1) {
-        if (mv_mp_mode_mx_lt(s, xa1_pu, ya1_pu, pred_flag_index_l0, mv, ref_idx_curr, ref_idx))
+        if (MP_MX_LT(a1, pred_flag_index_l0, mv))
             return 1;
-        if (mv_mp_mode_mx_lt(s, xa1_pu, ya1_pu, pred_flag_index_l1, mv, ref_idx_curr, ref_idx))
+        if (MP_MX_LT(a1, pred_flag_index_l1, mv))
             return 1;
     }
     return 0;
@@ -836,35 +851,35 @@ void ff_hevc_luma_mv_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW,
                       cand_bottom_left, &mxA, ref_idx_curr, ref_idx,
                       &is_scaled_flag_l0);
 
-    isAvailable_b0 = (cand_up_right && !TAB_MVF(xb0_pu, yb0_pu).is_intra);
+    isAvailable_b0 = AVAILABLE(cand_up_right, b0);
 
     if (isAvailable_b0)
         isAvailable_b0 = check_prediction_block_available(s, log2_cb_size, x0, y0, nPbW,
                                                          nPbH, x0 + nPbW, y0 - 1, part_idx);
 
     if (isAvailable_b0) {
-        available_flag_lx_b0 = mv_mp_mode_mx(s, xb0_pu, yb0_pu, pred_flag_index_l0, &mxB, ref_idx_curr, ref_idx);
+        available_flag_lx_b0 = MP_MX(b0, pred_flag_index_l0, &mxB);
         if (!available_flag_lx_b0)
-            available_flag_lx_b0 = mv_mp_mode_mx(s, xb0_pu, yb0_pu, pred_flag_index_l1, &mxB, ref_idx_curr, ref_idx);
+            available_flag_lx_b0 = MP_MX(b0, pred_flag_index_l1, &mxB);
     }
 
     if (!available_flag_lx_b0) {
-        is_available_b1 = cand_up && !TAB_MVF(xb1_pu, yb1_pu).is_intra;
+        is_available_b1 = AVAILABLE(cand_up, b1);
 
         if (is_available_b1) {
-            available_flag_lx_b0 = mv_mp_mode_mx(s, xb1_pu, yb1_pu, pred_flag_index_l0, &mxB, ref_idx_curr, ref_idx);
+            available_flag_lx_b0 = MP_MX(b1, pred_flag_index_l0, &mxB);
             if (!available_flag_lx_b0)
-                available_flag_lx_b0 = mv_mp_mode_mx(s, xb1_pu, yb1_pu, pred_flag_index_l1, &mxB, ref_idx_curr, ref_idx);
+                available_flag_lx_b0 = MP_MX(b1, pred_flag_index_l1, &mxB);
         }
     }
 
     if (!available_flag_lx_b0) {
-        is_available_b2 = cand_up_left && !TAB_MVF(xb2_pu, yb2_pu).is_intra;
+        is_available_b2 = AVAILABLE(cand_up_left, b2);
 
         if (is_available_b2) {
-            available_flag_lx_b0 = mv_mp_mode_mx(s, xb2_pu, yb2_pu, pred_flag_index_l0, &mxB, ref_idx_curr, ref_idx);
+            available_flag_lx_b0 = MP_MX(b2, pred_flag_index_l0, &mxB);
             if (!available_flag_lx_b0)
-                available_flag_lx_b0 = mv_mp_mode_mx(s, xb2_pu, yb2_pu, pred_flag_index_l1, &mxB, ref_idx_curr, ref_idx);
+                available_flag_lx_b0 = MP_MX(b2, pred_flag_index_l1, &mxB);
         }
     }
     if (is_scaled_flag_l0 == 0) {
@@ -876,21 +891,21 @@ void ff_hevc_luma_mv_mvp_mode(HEVCContext *s, int x0, int y0, int nPbW,
 
         // XB0 and L1
         if (isAvailable_b0) {
-            available_flag_lx_b0 = mv_mp_mode_mx_lt(s, xb0_pu, yb0_pu, pred_flag_index_l0, &mxB, ref_idx_curr, ref_idx);
+            available_flag_lx_b0 = MP_MX_LT(b0, pred_flag_index_l0, &mxB);
             if (!available_flag_lx_b0)
-                available_flag_lx_b0 = mv_mp_mode_mx_lt(s, xb0_pu, yb0_pu, pred_flag_index_l1, &mxB, ref_idx_curr, ref_idx);
+                available_flag_lx_b0 = MP_MX_LT(b0, pred_flag_index_l1, &mxB);
         }
 
         if (is_available_b1 && !available_flag_lx_b0) {
-            available_flag_lx_b0 = mv_mp_mode_mx_lt(s, xb1_pu, yb1_pu, pred_flag_index_l0, &mxB, ref_idx_curr, ref_idx);
+            available_flag_lx_b0 = MP_MX_LT(b1, pred_flag_index_l0, &mxB);
             if (is_available_b1 && !available_flag_lx_b0)
-                available_flag_lx_b0 = mv_mp_mode_mx_lt(s, xb1_pu, yb1_pu, pred_flag_index_l1, &mxB, ref_idx_curr, ref_idx);
+                available_flag_lx_b0 = MP_MX_LT(b1, pred_flag_index_l1, &mxB);
         }
 
         if (is_available_b2 && !available_flag_lx_b0) {
-            available_flag_lx_b0 = mv_mp_mode_mx_lt(s, xb2_pu, yb2_pu, pred_flag_index_l0, &mxB, ref_idx_curr, ref_idx);
+            available_flag_lx_b0 = MP_MX_LT(b2, pred_flag_index_l0, &mxB);
             if (is_available_b2 && !available_flag_lx_b0)
-                available_flag_lx_b0 = mv_mp_mode_mx_lt(s, xb2_pu, yb2_pu, pred_flag_index_l1, &mxB, ref_idx_curr, ref_idx);
+                available_flag_lx_b0 = MP_MX_LT(b2, pred_flag_index_l1, &mxB);
         }
     }
 
