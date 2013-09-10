@@ -801,7 +801,7 @@ typedef struct HEVCContext {
     AVFrame *sao_frame;
     AVFrame *tmp_frame;
     VPS *vps;
-    const SPS *sps;
+    SPS *sps;
     PPS *pps;
     VPS *vps_list[MAX_VPS_COUNT];
     SPS *sps_list[MAX_SPS_COUNT];
