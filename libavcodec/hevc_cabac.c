@@ -23,6 +23,7 @@
 
 #include "libavutil/attributes.h"
 #include "libavutil/common.h"
+
 #include "cabac_functions.h"
 #include "hevc.h"
 
@@ -345,7 +346,7 @@ static void load_states(HEVCContext *s)
 
 static void cabac_reinit(HEVCLocalContext *lc)
 {
-    skip_bytes(&lc->cc,0);
+    skip_bytes(&lc->cc, 0);
 }
 
 static void cabac_init_decoder(HEVCContext *s)
@@ -407,8 +408,8 @@ void ff_hevc_cabac_init(HEVCContext *s, int ctb_addr_ts)
         }
         if (s->pps->entropy_coding_sync_enabled_flag) {
             if ((ctb_addr_ts % s->sps->pic_width_in_ctbs) == 0) {
-                ff_hevc_end_of_sub_stream_one_bit_decode(s);
-                if (s->threads_number==1)
+                get_cabac_terminate(&s->HEVClc->cc);
+                if (s->threads_number == 1)
                     cabac_reinit(s->HEVClc);
                 else
                     cabac_init_decoder(s);
@@ -476,10 +477,6 @@ int ff_hevc_end_of_slice_flag_decode(HEVCContext *s)
     return get_cabac_terminate(&s->HEVClc->cc);
 }
 
-int ff_hevc_end_of_sub_stream_one_bit_decode(HEVCContext *s)
-{
-    return get_cabac_terminate(&s->HEVClc->cc);
-}
 int ff_hevc_cu_transquant_bypass_flag_decode(HEVCContext *s)
 {
     return GET_CABAC(elem_offset[CU_TRANSQUANT_BYPASS_FLAG]);
@@ -496,6 +493,7 @@ int ff_hevc_skip_flag_decode(HEVCContext *s, int x0, int y0, int x_cb, int y_cb)
         inc = SAMPLE_CTB(s->skip_flag, x_cb-1, y_cb);
     if (s->HEVClc->ctb_up_flag || y0b)
         inc += SAMPLE_CTB(s->skip_flag, x_cb, y_cb-1);
+
     return GET_CABAC(elem_offset[SKIP_FLAG] + inc);
 }
 
@@ -662,7 +660,7 @@ int ff_hevc_ref_idx_lx_decode(HEVCContext *s, int num_ref_idx_lx)
 
     while (i < max_ctx && GET_CABAC(elem_offset[REF_IDX_L0] + i))
         i++;
-    if (i==2) {
+    if (i == 2) {
         while (i < max && get_cabac_bypass(&s->HEVClc->cc))
             i++;
     }
