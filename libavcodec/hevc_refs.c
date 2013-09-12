@@ -187,8 +187,8 @@ int ff_hevc_output_frame(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
     int min_poc   = 0xFFFF;
     int i, j, min_idx, ret;
     uint8_t run = 1;
-    min_idx = 0;
     AVFrame *dst, *src;
+    min_idx = 0;
 
     while (run) {
         for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {

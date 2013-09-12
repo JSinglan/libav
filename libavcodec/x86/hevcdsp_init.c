@@ -125,11 +125,6 @@ void ff_hevcdsp_init_x86(HEVCDSPContext *c, const int bit_depth)
                 	c->sao_band_filter[1] = ff_hevc_sao_band_filter_1_8_sse;
                 	c->sao_band_filter[2] = ff_hevc_sao_band_filter_2_8_sse;
                 	c->sao_band_filter[3] = ff_hevc_sao_band_filter_3_8_sse;
-
-                    c->dequant[0] = ff_hevc_dequant4x4_8_sse4;
-                    c->dequant[1] = ff_hevc_dequant8x8_8_sse4;
-                    c->dequant[2] = ff_hevc_dequant16x16_8_sse4;
-                    c->dequant[3] = ff_hevc_dequant32x32_8_sse4;
                 }
                 if (EXTERNAL_AVX(mm_flags)) {
                 }
@@ -146,11 +141,6 @@ void ff_hevcdsp_init_x86(HEVCDSPContext *c, const int bit_depth)
 #endif /* HAVE_ALIGNED_STACK */
                 }
                 if (EXTERNAL_SSE4(mm_flags)) {
-                    c->dequant[0] = ff_hevc_dequant4x4_10_sse4;
-                    c->dequant[1] = ff_hevc_dequant8x8_10_sse4;
-                    c->dequant[2] = ff_hevc_dequant16x16_10_sse4;
-                    c->dequant[3] = ff_hevc_dequant32x32_10_sse4;
-
                     c->put_hevc_epel[0][0] = ff_hevc_put_hevc_epel_pixels_10_sse;
                     c->put_hevc_epel[0][1] = ff_hevc_put_hevc_epel_h_10_sse;
                     c->put_hevc_epel[1][0] = ff_hevc_put_hevc_epel_v_10_sse;

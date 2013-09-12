@@ -2040,8 +2040,9 @@ static int hls_coding_unit(HEVCContext *s, int x0, int y0, int log2_cb_size)
                 lc->cu.pcm_flag = ff_hevc_pcm_flag_decode(s);
             }
             if (lc->cu.pcm_flag) {
+                int ret;
                 intra_prediction_unit_default_value(s, x0, y0, log2_cb_size);
-                int ret = hls_pcm_sample(s, x0, y0, log2_cb_size);
+                ret = hls_pcm_sample(s, x0, y0, log2_cb_size);
                 if(s->sps->pcm.loop_filter_disable_flag)
                     set_deblocking_bypass(s, x0, y0, log2_cb_size);
 
