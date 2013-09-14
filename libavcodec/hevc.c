@@ -1187,13 +1187,12 @@ static void hls_residual_coding(HEVCContext *s, int x0, int y0,
                 }
                 trans_coeff_level = (trans_coeff_level * (int64_t)scale * (int64_t)scale_m + add) >> shift;
                 if(trans_coeff_level < 0) {
-                    if((~trans_coeff_level) & 0xffffffffffff0000)
+                    if((~trans_coeff_level) & 0xFffffffffff8000)
                         trans_coeff_level = -32768;
                 } else {
-                    if(trans_coeff_level & 0xffffffffffff0000)
+                    if(trans_coeff_level & 0xffffffffffff8000)
                         trans_coeff_level = 32767;
                 }
-                 
             }
             coeffs[y_c * trafo_size + x_c] = trans_coeff_level;
 
@@ -1416,8 +1415,8 @@ static int hls_pcm_sample(HEVCContext *s, int x0, int y0, int log2_cb_size)
     int   stride2 = s->frame->linesize[2];
     uint8_t *dst2 = &s->frame->data[2][(y0 >> s->sps->vshift[2]) * stride2 + ((x0 >> s->sps->hshift[2]) << s->sps->pixel_shift)];
 
-    int length = cb_size * cb_size * 3 / 2 * s->sps->pcm.bit_depth;
-    const uint8_t *pcm = skip_bytes(&lc->cc, length >> 3);
+    int length = cb_size * cb_size * s->sps->pcm.bit_depth + ((cb_size * cb_size) >> 1) * s->sps->pcm.bit_depth_chroma;
+    const uint8_t *pcm = skip_bytes(&lc->cc, (length + 7) >> 3);
     int i, j, ret;
 
     //for (j = y0 >> log2_min_pu_size; j < ((y0 + cb_size) >> log2_min_pu_size); j++)
@@ -1439,8 +1438,8 @@ static int hls_pcm_sample(HEVCContext *s, int x0, int y0, int log2_cb_size)
         return ret;
 
     s->hevcdsp.put_pcm(dst0, stride0, cb_size, &gb, s->sps->pcm.bit_depth);
-    s->hevcdsp.put_pcm(dst1, stride1, cb_size / 2, &gb, s->sps->pcm.bit_depth);
-    s->hevcdsp.put_pcm(dst2, stride2, cb_size / 2, &gb, s->sps->pcm.bit_depth);
+    s->hevcdsp.put_pcm(dst1, stride1, cb_size / 2, &gb, s->sps->pcm.bit_depth_chroma);
+    s->hevcdsp.put_pcm(dst2, stride2, cb_size / 2, &gb, s->sps->pcm.bit_depth_chroma);
     return 0;
 }
 
@@ -2418,7 +2417,6 @@ static int hls_decode_entry_tiles(AVCodecContext *avctxt, int *input_ctb_row, in
     int x_ctb       = 0;
     int y_ctb       = 0;
 
-    int ctb_size    = 1<< s->sps->log2_ctb_size;
     int more_data   = 1;
 
     int *ctb_row_p    = input_ctb_row;
