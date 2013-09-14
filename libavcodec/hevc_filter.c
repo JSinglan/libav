@@ -211,35 +211,15 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y)
     classes[0] = 0;
 
 
-    if(s->pps->tiles_enabled_flag) {
-        int tile_left_boundary = ((x_ctb > 0) &&
-                              (s->pps->tile_id[ctb_addr_ts] == s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs-1]]));
-        int slice_left_boundary = ((x_ctb > 0) &&
-                               (s->tab_slice_address[ctb_addr_rs] == s->tab_slice_address[ctb_addr_rs - 1]));
-        int tile_up_boundary = ((y_ctb > 0) &&
-                            (s->pps->tile_id[ctb_addr_ts] == s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs - s->sps->pic_width_in_ctbs]]));
-        int slice_up_boundary = ((y_ctb > 0) &&
-                             (s->tab_slice_address[ctb_addr_rs] == s->tab_slice_address[ctb_addr_rs - s->sps->pic_width_in_ctbs]));
-        int tile_right_boundary = ((x_ctb < (s->sps->pic_width_in_ctbs - 1)) &&
-                                  (s->pps->tile_id[ctb_addr_ts] == s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs + 1]]));
-        int slice_right_boundary = ((x_ctb < (s->sps->pic_width_in_ctbs - 1)) &&
-                                   (s->tab_slice_address[ctb_addr_rs] == s->tab_slice_address[ctb_addr_rs + 1]));
-        int tile_down_boundary = ((y_ctb < (s->sps->pic_height_in_ctbs - 1)) &&
-                                (s->pps->tile_id[ctb_addr_ts] == s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs + s->sps->pic_width_in_ctbs]]));
-        int slice_down_boundary = ((y_ctb < (s->sps->pic_height_in_ctbs - 1)) &&
-                                 (s->tab_slice_address[ctb_addr_rs] == s->tab_slice_address[ctb_addr_rs + s->sps->pic_width_in_ctbs]));
-
-        if (!s->sh.slice_loop_filter_across_slices_enabled_flag) {
-//            edges[0] |= !slice_left_boundary;
-//            edges[1] |= !slice_up_boundary;
-//            edges[2] |= !slice_right_boundary;
-//            edges[3] |= !slice_down_boundary;
-        } else if (!s->pps->loop_filter_across_tiles_enabled_flag) {
- //           edges[0] |= !tile_left_boundary;
- //           edges[1] |= !tile_up_boundary;
- //           edges[2] |= !tile_right_boundary;
- //           edges[3] |= !tile_down_boundary;
-        }
+    if(s->pps->tiles_enabled_flag && !s->pps->loop_filter_across_tiles_enabled_flag) {
+        if(x_ctb > 0)
+            edges[0] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs-1]];
+        if(y_ctb > 0)
+            edges[1] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs - s->sps->pic_width_in_ctbs]];
+        if(x_ctb < (s->sps->pic_width_in_ctbs-1 ))
+            edges[2] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs+1]];
+        if(y_ctb < (s->sps->pic_height_in_ctbs-1))
+            edges[3] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs + s->sps->pic_width_in_ctbs]];
     }
     if (!edges[0]) {
         sao[class] = &CTB(s->sao, x_ctb - 1, y_ctb);
@@ -579,6 +559,7 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
     int i, j;
     int bs;
     MvField *tab_mvf = s->ref->tab_mvf;
+    int is_intra = tab_mvf[(y0 >> log2_min_pu_size) * pic_width_in_min_pu + (x0 >> log2_min_pu_size)].is_intra;
     if (y0 > 0 && (y0 & 7) == 0) {
         int yp_pu = (y0 - 1) >> log2_min_pu_size;
         int yq_pu = y0 >> log2_min_pu_size;
@@ -606,7 +587,7 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
         }
     }
     // bs for TU internal horizontal PU boundaries
-    if (log2_trafo_size > s->sps->log2_min_pu_size)
+    if (log2_trafo_size > s->sps->log2_min_pu_size && !is_intra)
         for (j = 8; j < (1 << log2_trafo_size); j += 8) {
             int yp_pu = (y0 + j - 1) >> log2_min_pu_size;
             int yq_pu = (y0 + j)     >> log2_min_pu_size;
@@ -658,7 +639,7 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
     }
 
     // bs for TU internal vertical PU boundaries
-    if (log2_trafo_size > s->sps->log2_min_pu_size)
+    if (log2_trafo_size > s->sps->log2_min_pu_size && !is_intra)
         for (j = 0; j < (1 << log2_trafo_size); j += 4) {
             int y_pu = (y0 + j) >> log2_min_pu_size;
             int y_tu = (y0 + j) >> log2_min_tu_size;
