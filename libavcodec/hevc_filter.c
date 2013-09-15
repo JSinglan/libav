@@ -78,8 +78,8 @@ static int get_qPy_pred(HEVCContext *s, int xC, int yC, int xBase, int yBase, in
     int MinCuQpDeltaSizeMask = (1 << (s->sps->log2_ctb_size - s->pps->diff_cu_qp_delta_depth)) - 1;
     int xQgBase              = xBase - ( xBase & MinCuQpDeltaSizeMask );
     int yQgBase              = yBase - ( yBase & MinCuQpDeltaSizeMask );
-    int pic_width            = s->sps->pic_width_in_luma_samples  >> s->sps->log2_min_coding_block_size;
-    int pic_height           = s->sps->pic_height_in_luma_samples >> s->sps->log2_min_coding_block_size;
+    int pic_width            = s->sps->pic_width_in_min_cbs;
+    int pic_height           = s->sps->pic_height_in_min_cbs;
     int x_cb                 = xQgBase >> s->sps->log2_min_coding_block_size;
     int y_cb                 = yQgBase >> s->sps->log2_min_coding_block_size;
     int availableA           = (xBase & ctb_size_mask) && (xQgBase & ctb_size_mask);
@@ -163,7 +163,7 @@ void ff_hevc_set_qPy(HEVCContext *s, int xC, int yC, int xBase, int yBase, int l
 static int get_qPy(HEVCContext *s, int xC, int yC)
 {
     int log2_min_cb_size  = s->sps->log2_min_coding_block_size;
-    int pic_width         = s->sps->pic_width_in_luma_samples>>log2_min_cb_size;
+    int pic_width         = s->sps->pic_width_in_min_cbs;
     int x                 = xC >> log2_min_cb_size;
     int y                 = yC >> log2_min_cb_size;
     return s->qp_y_tab[x + y * pic_width];
@@ -554,7 +554,7 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
     int log2_min_pu_size = s->sps->log2_min_pu_size;
     int log2_min_tu_size = s->sps->log2_min_transform_block_size;
     int pic_width_in_min_pu = s->sps->pic_width_in_luma_samples >> log2_min_pu_size;
-    int pic_width_in_min_tu = s->sps->pic_width_in_luma_samples >> log2_min_tu_size;
+    int pic_width_in_min_tu = s->sps->pic_width_in_min_tbs;
 
     int i, j;
     int bs;

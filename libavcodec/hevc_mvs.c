@@ -87,7 +87,7 @@ static int check_prediction_block_available(HEVCContext *s, int log2_cb_size,
                                             int x0, int y0, int nPbW, int nPbH,
                                             int xA1, int yA1, int partIdx)
 {
-    HEVCLocalContext *lc = &s->HEVClc;
+    HEVCLocalContext *lc = s->HEVClc;
     if (lc->cu.x < xA1 &&
         lc->cu.y < yA1 &&
         (lc->cu.x + (1 << log2_cb_size)) > xA1 &&
