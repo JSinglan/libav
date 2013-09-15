@@ -211,9 +211,9 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y)
     classes[0] = 0;
 
 
-/*    if(s->pps->tiles_enabled_flag && !s->pps->loop_filter_across_tiles_enabled_flag) {
-        if(x_ctb > 0)
-            edges[0] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs-1]];
+    if(s->pps->tiles_enabled_flag && !s->pps->loop_filter_across_tiles_enabled_flag) {
+//        if(x_ctb > 0)
+//            edges[0] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs-1]];
         if(y_ctb > 0)
             edges[1] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs - s->sps->pic_width_in_ctbs]];
         if(x_ctb < (s->sps->pic_width_in_ctbs-1 ))
@@ -221,7 +221,7 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y)
         if(y_ctb < (s->sps->pic_height_in_ctbs-1))
             edges[3] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs + s->sps->pic_width_in_ctbs]];
     }
-*/    if (!edges[0]) {
+    if (!edges[0]) {
         sao[class] = &CTB(s->sao, x_ctb - 1, y_ctb);
         vert_edge[0] = !lfase[0] && CTB(s->tab_slice_address, x_ctb, y_ctb) != CTB(s->tab_slice_address, x_ctb - 1, y_ctb);
         vert_edge[2] = vert_edge[0];
