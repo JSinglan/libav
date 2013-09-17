@@ -330,7 +330,6 @@ static void derive_spatial_merge_candidates(HEVCContext *s, int x0, int y0,
     int xb1_pu;
     int yb1_pu;
 
-    int check_B0;
     int xB0, yB0;
     int is_available_b0;
     int xb0_pu;
