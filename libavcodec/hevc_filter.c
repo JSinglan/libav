@@ -201,6 +201,9 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y)
     uint8_t horiz_edge[] = {0,0,0,0};
     uint8_t diag_edge[] = {0,0,0,0};
     uint8_t lfase[3]; // current, above, left
+    uint8_t no_tile_filter = s->pps->tiles_enabled_flag && !s->pps->loop_filter_across_tiles_enabled_flag;
+    uint8_t left_tile_edge = 0;
+    uint8_t up_tile_edge = 0;
 
     sao[0]     = &CTB(s->sao, x_ctb, y_ctb);
     edges[0]   = x_ctb == 0;
@@ -211,19 +214,10 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y)
     classes[0] = 0;
 
 
-    if(s->pps->tiles_enabled_flag && !s->pps->loop_filter_across_tiles_enabled_flag) {
-//        if(x_ctb > 0)
-//            edges[0] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs-1]];
-        if(y_ctb > 0)
-            edges[1] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs - s->sps->pic_width_in_ctbs]];
-        if(x_ctb < (s->sps->pic_width_in_ctbs-1 ))
-            edges[2] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs+1]];
-        if(y_ctb < (s->sps->pic_height_in_ctbs-1))
-            edges[3] |= s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs + s->sps->pic_width_in_ctbs]];
-    }
     if (!edges[0]) {
+        left_tile_edge = no_tile_filter && s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs-1]];
         sao[class] = &CTB(s->sao, x_ctb - 1, y_ctb);
-        vert_edge[0] = !lfase[0] && CTB(s->tab_slice_address, x_ctb, y_ctb) != CTB(s->tab_slice_address, x_ctb - 1, y_ctb);
+        vert_edge[0] = (!lfase[0] && CTB(s->tab_slice_address, x_ctb, y_ctb) != CTB(s->tab_slice_address, x_ctb - 1, y_ctb)) || left_tile_edge;
         vert_edge[2] = vert_edge[0];
         lfase[2] = CTB(s->filter_slice_edges, x_ctb - 1, y_ctb);
         classes[class] = 2;
@@ -232,8 +226,9 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y)
     }
 
     if (!edges[1]) {
+        up_tile_edge = no_tile_filter && s->pps->tile_id[ctb_addr_ts] != s->pps->tile_id[s->pps->ctb_addr_rs_to_ts[ctb_addr_rs - s->sps->pic_width_in_ctbs]];
         sao[class] = &CTB(s->sao, x_ctb, y_ctb - 1);
-        horiz_edge[0] = !lfase[0] && CTB(s->tab_slice_address, x_ctb, y_ctb) != CTB(s->tab_slice_address, x_ctb, y_ctb - 1);
+        horiz_edge[0] = (!lfase[0] && CTB(s->tab_slice_address, x_ctb, y_ctb) != CTB(s->tab_slice_address, x_ctb, y_ctb - 1)) || up_tile_edge;
         horiz_edge[1] = horiz_edge[0];
         lfase[1] = CTB(s->filter_slice_edges, x_ctb, y_ctb - 1);
         classes[class] = 1;
@@ -245,21 +240,25 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y)
             sao[class] = &CTB(s->sao, x_ctb - 1, y_ctb - 1);
             class++;
             
-            vert_edge[1] = !lfase[1] && CTB(s->tab_slice_address, x_ctb, y_ctb - 1) != CTB(s->tab_slice_address, x_ctb - 1, y_ctb - 1);
+            // Tile check here is done current CTB row/col, not above/left like you'd expect, 
+            //but that is because the tile boundary always extends through the whole pic
+            vert_edge[1] = (!lfase[1] && CTB(s->tab_slice_address, x_ctb, y_ctb - 1) != CTB(s->tab_slice_address, x_ctb - 1, y_ctb - 1)) || left_tile_edge;
             vert_edge[3] = vert_edge[1];
-            horiz_edge[2] = !lfase[2] && CTB(s->tab_slice_address, x_ctb - 1, y_ctb) != CTB(s->tab_slice_address, x_ctb - 1, y_ctb - 1);
+            horiz_edge[2] = (!lfase[2] && CTB(s->tab_slice_address, x_ctb - 1, y_ctb) != CTB(s->tab_slice_address, x_ctb - 1, y_ctb - 1)) || up_tile_edge;
             horiz_edge[3] = horiz_edge[2];
-            diag_edge[0] = !lfase[0] && CTB(s->tab_slice_address, x_ctb, y_ctb) != CTB(s->tab_slice_address, x_ctb - 1, y_ctb - 1);
+            diag_edge[0] = (!lfase[0] && CTB(s->tab_slice_address, x_ctb, y_ctb) != CTB(s->tab_slice_address, x_ctb - 1, y_ctb - 1)) || left_tile_edge || up_tile_edge;
             diag_edge[3] = diag_edge[0];
             // Does left CTB comes after above CTB?
             if(CTB(s->tab_slice_address, x_ctb - 1, y_ctb) > CTB(s->tab_slice_address, x_ctb, y_ctb - 1)) {
-                diag_edge[2] = !lfase[2];
+                diag_edge[2] = !lfase[2] || left_tile_edge || up_tile_edge;
                 diag_edge[1] = diag_edge[2];
             } else if(CTB(s->tab_slice_address, x_ctb - 1, y_ctb) < CTB(s->tab_slice_address, x_ctb, y_ctb - 1)) {
-                diag_edge[1] = !lfase[1];
+                diag_edge[1] = !lfase[1] || left_tile_edge || up_tile_edge;
                 diag_edge[2] = diag_edge[1];
             } else {
-                // Same slice, do nothing
+                // Same slice, only consider tiles
+                diag_edge[2] = left_tile_edge || up_tile_edge;
+                diag_edge[1] = diag_edge[2];
             }
 
         }
