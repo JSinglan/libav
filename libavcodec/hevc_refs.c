@@ -149,7 +149,7 @@ void ff_hevc_clear_refs(HEVCContext *s)
 {
     int i;
     for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++)
-        ff_hevc_unref_frame(s, &s->DPB[i], HEVC_FRAME_FLAG_SHORT_REF);
+        ff_hevc_unref_frame(s, &s->DPB[i], HEVC_FRAME_FLAG_SHORT_REF | HEVC_FRAME_FLAG_LONG_REF);
 }
 
 void ff_hevc_flush_dpb(HEVCContext *s)
