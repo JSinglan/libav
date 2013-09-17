@@ -283,8 +283,6 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y)
                  (edges[2] ? width  + (x_shift >> chroma) : width)  << s->sps->pixel_shift,
                  (edges[3] ? height + (y_shift >> chroma) : height), stride);
 
-
-
         for (class_index = 0; class_index < class; class_index++) {
 
             switch (sao[class_index]->type_idx[c_idx]) {
@@ -302,8 +300,8 @@ static void sao_filter_CTB(HEVCContext *s, int x, int y)
 static int get_pcm(HEVCContext *s, int x, int y)
 {
     int log2_min_pu_size     = s->sps->log2_min_pu_size;
-    int pic_width_in_min_pu  = s->sps->pic_width_in_luma_samples  >> s->sps->log2_min_pu_size;
-    int pic_height_in_min_pu = s->sps->pic_height_in_luma_samples >> s->sps->log2_min_pu_size;
+    int pic_width_in_min_pu  = s->sps->pic_width_in_min_pus;
+    int pic_height_in_min_pu = s->sps->pic_height_in_min_pus;
     int x_pu = x >> log2_min_pu_size;
     int y_pu = y >> log2_min_pu_size;
 
@@ -550,15 +548,15 @@ static int boundary_strength(HEVCContext *s, MvField *curr,
 
 void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int log2_trafo_size, int slice_or_tiles_up_boundary, int slice_or_tiles_left_boundary)
 {
+    MvField *tab_mvf = s->ref->tab_mvf;
     int log2_min_pu_size = s->sps->log2_min_pu_size;
     int log2_min_tu_size = s->sps->log2_min_transform_block_size;
-    int pic_width_in_min_pu = s->sps->pic_width_in_luma_samples >> log2_min_pu_size;
+    int pic_width_in_min_pu = s->sps->pic_width_in_min_pus;
     int pic_width_in_min_tu = s->sps->pic_width_in_min_tbs;
-
-    int i, j;
     int bs;
-    MvField *tab_mvf = s->ref->tab_mvf;
     int is_intra = tab_mvf[(y0 >> log2_min_pu_size) * pic_width_in_min_pu + (x0 >> log2_min_pu_size)].is_intra;
+    int i, j;
+
     if (y0 > 0 && (y0 & 7) == 0) {
         int yp_pu = (y0 - 1) >> log2_min_pu_size;
         int yq_pu = y0 >> log2_min_pu_size;
@@ -638,7 +636,7 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
     }
 
     // bs for TU internal vertical PU boundaries
-    if (log2_trafo_size > s->sps->log2_min_pu_size && !is_intra)
+    if (log2_trafo_size > log2_min_pu_size && !is_intra)
         for (j = 0; j < (1 << log2_trafo_size); j += 4) {
             int y_pu = (y0 + j) >> log2_min_pu_size;
             int y_tu = (y0 + j) >> log2_min_tu_size;
@@ -668,8 +666,6 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
 
 void ff_hevc_hls_filter(HEVCContext *s, int x, int y)
 {
-    //int c_idx_min = s->sh.slice_sample_adaptive_offset_flag[0] != 0 ? 0 : 1;
-    //int c_idx_max = s->sh.slice_sample_adaptive_offset_flag[1] != 0 ? 3 : 1;
     deblocking_filter_CTB(s, x, y);
     if (s->sps->sample_adaptive_offset_enabled_flag)
         sao_filter_CTB(s, x, y);

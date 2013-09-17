@@ -363,6 +363,10 @@ typedef struct SPS {
     int pic_height_in_min_cbs;
     int pic_width_in_min_tbs;
     int pic_height_in_min_tbs;
+    int pic_width_in_min_pus;
+    int pic_height_in_min_pus;
+
+    int log2_diff_ctb_min_tb_size;
 
     int log2_min_pu_size;
 
@@ -819,6 +823,7 @@ typedef struct HEVCContext {
     SPS *sps_list[MAX_SPS_COUNT];
     PPS *pps_list[MAX_PPS_COUNT];
 
+    int prev_sps_id; 
     SliceHeader sh;
     SAOParams *sao;
     DBParams *deblock;
@@ -875,7 +880,7 @@ typedef struct HEVCContext {
     uint8_t *data;
 
     uint8_t *rbsp_buffer;
-    int rbsp_buffer_size;
+    uint32_t rbsp_buffer_size;
 
     int enable_parallel_tiles;
     int nuh_layer_id;
